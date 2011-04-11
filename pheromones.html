@@ -1,0 +1,64 @@
+<html>
+<script>
+
+var imgs=[];		// sprites
+
+
+
+//----------------------------------------------------------------- agent object
+function Env(agents,w,h){
+	this.agents=agents;
+	this.d=[w,h];
+}
+
+function Agent(x,y){
+	this.x=x;
+	this.y=y;
+}	
+
+//---------------------------------------------------------------- ant specifics
+
+function Nest(x,y){
+	return Agent(x,y);
+}
+
+function Ant(x,y){
+	this.x=x;
+	this.y=y;
+}
+
+//------------------------------------------------- load HTMLElements and images
+function initCanvas(imgs,w,h,fn){   
+	canvasSize=[w,h];
+	
+	var c=document.createElement("canvas");
+	c.id="g";
+	imgC=c.getContext('2d');
+	c.width=w;
+	c.height=h;	
+	o("b").appendChild(c);
+	delete c;
+
+	var c=document.createElement("canvas");
+	c.id="overlay";
+	c.width=w;
+	c.height=h;
+	penC=c.getContext('2d');
+	penC.fillStyle="rgb(255,255,0)";
+	penC.strokeStyle="rgb(255,255,0)";
+	penC.lineWidth="12";
+	o("b").appendChild(c);
+	delete c;
+
+	for(var j in imgs){
+		var i=new Image();
+		i.src=imgs[parseInt(j)];
+		i.push(i);
+		
+		i.onload=function(){
+			if(++imgsLoaded==trainingSet.length) fn()
+		};
+	}
+}
+</script>
+</html>

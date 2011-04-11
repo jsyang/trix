@@ -1,0 +1,114 @@
+<html><title>Image Sequencer - Paste in the URL of the first and use arrow keys</title>
+<style>
+img {border:0}
+</style>
+<body onload="o('moo').focus()">
+<input type=text size=128 id=moo>
+
+<!--<hr><center>-->
+<img id=poo style="display:none">
+<!--</center><hr>-->
+<div id=imgtbl align=center></div>
+</body>
+<script>
+// Image sequencer v0.3
+// by JSYang
+
+function tbl(a,rowlen,h){
+	var html="<table>",c=0;
+	for(var i in a){
+		if(c%rowlen){
+			html+=(h&&(c<rowlen))?("<th>"+a[i]+"</th>"):("<td>"+a[i]+"</td>");
+			if((c%rowlen)==(rowlen-1)) html+="</tr>";
+		}else{
+			html+="<tr>";
+			html+=(h&&(c<rowlen))?("<th>"+a[i]+"</th>"):("<td>"+a[i]+"</td>");
+		}
+		c++;
+	}
+	return html+"</table>";
+};
+
+function o(a){ return document.getElementById(a); }
+
+var prevI = function(){
+	var a=o('moo').value;
+	var leading0=1;
+	var b=a.lastIndexOf(".")-1, c=b;
+	while(!isNaN(parseInt(a.substr(c,1)))){ c--; }c++;
+	var leading0=(parseInt(a.substr(c,1))=="0")?1:0;
+	var d=(c==b)?parseInt(a.substr(c,1))-1:parseInt(a.substr(c,b-c+1))-1;
+	if(d<0){return;}
+	d+="";
+	if(leading0){ while(d.length<(b-c+1)){ d="0"+d; } }
+	var e=a.slice(0,c), f=a.substr(b+1);
+	o('moo').value=e+d+f;
+};
+
+var nextI = function(){
+	var a=o('moo').value;
+	var b=a.lastIndexOf(".")-1, c=b;
+	while(!isNaN(parseInt(a.substr(c,1),10))){ c--; }c++;
+	//alert(a.substr(c,b-c+1)+" pI="+parseInt(a.substr(c,b-c+1)));
+	var d=parseInt(a.substr(c,b-c+1),10)+1;
+	d+="";
+	while(d.length<(b-c+1)){ d="0"+d; }
+	var e=a.slice(0,c), f=a.substr(b+1);
+	o('moo').value=e+d+f;
+};
+
+
+var imgs=[];
+var imghs=[];
+var imgws=[];
+var loadStop=0;
+
+var showAllCollected = function(){
+	if(imgs.length<1) return;
+	var j=0,imgHTML=[];
+	var mR=Math.round;
+	for(var i in imgs){
+		imgHTML.push("<a href="+imgs[j]+"><img id=t"+j+" width="+mR(imgws[j]<<2)+" height="+mR(imghs[j]<<2)+" src="+imgs[j]+"></a>");
+		j++;
+	}
+	o('imgtbl').innerHTML=tbl(imgHTML,4,0);
+	o('moo').value=imgs[0];
+	refreshIURL();
+	loadStop=1;
+};
+	
+var scanURL=function(){
+	loadStop=0;
+	var timg=new Image();
+	timg.src=o('moo').value;
+	timg.onload=function(){
+		if(loadStop) return;
+		imgs.push(timg.src);
+		imgws.push(timg.width);
+		imghs.push(timg.height);
+		nextI();scanURL();};
+	timg.onerror=showAllCollected;
+};
+
+var refreshIURL=function(){ o('poo').src=o('moo').value; };
+
+var arrowKeys = function(e){
+	if (document.all) e=event;
+	if(e){
+		switch(e.keyCode){
+			case 37: prevI();refreshIURL();break;
+			case 39: nextI();refreshIURL();break;
+//			case 38: alert(imgs.length); break;
+			case 13: imgs=[];imgws=[];imghs=[];o('moo').blur(); scanURL(); break;
+		}
+	}
+};
+
+document.body.onkeypress = arrowKeys;
+
+//<input type=button onclick=scanURL() value='Scan for pictures'>
+//<input type=button onclick=showAllCollected value='Show All'>
+
+
+</script>
+</html>

@@ -1,0 +1,214 @@
+<html>
+<style>
+.brd {border: solid 1px #842; padding: 1px;}
+td {font-size:10px}
+</style>
+<script>
+// Newsgrate - News article parser (35% complete)
+// 2:10 AM 3/3/2009 - works with most Bloomberg.com articles
+
+o=function(a){return document.getElementById(a);};
+// 000000000000000000000000000000000000000000000000000000000000000000000000000000 \\
+// Paragraph object
+function Paragraph(){
+	this.raw="";
+	this.sentences=[];
+}
+
+Paragraph.prototype.isHeadline = function(){
+	if(this.sentences.length==1) return this.sentences[0].isHeadline();
+	return false;
+}
+
+// Sentence object
+function Sentence(){
+	this.raw="";
+	this.words=[];
+}
+
+Sentence.prototype.isHeadline = function(){
+	var a=/[^."!?]\s$/;
+	return a.test(this.raw);
+}
+
+// 111111111111111111111111111111111111111111111111111111111111111111111111111111 \\
+
+// parse level 1: paragraphs
+parseL1=function(a){
+	var b=a.split(/\n/), c=[];
+	// get rid of dreaded return and form-feed characters
+	for(var i in b){ b[i]=(b[i].replace(/\r/g,'')).replace(/\f/g,''); }
+	// get rid of null elements
+	var d=b.length+1;
+	while(d!=b.length){
+		d=b.length;
+		for(var i in b){ if(b[i].length==0||b[i]==null) b.splice(i,1); } 
+	}
+	for(var i in b){ var cc=new Paragraph; cc.raw=b[i]; cc.sentences=parseL2(b[i]); c.push(cc); }
+	return c;
+}
+
+// helper PL2a - break down function
+parseL2a=function(b,a){ for(var i in b){
+	var d=b[i].split(a);
+	if(d.length>1){
+		b.splice(i,1);
+		for(var j in d) b.splice(i,0,(j<d.length-1)?(d[j]+a):d[j]);
+	}
+}}
+
+// helper PL2b - dates, initials and abbreviation mending
+parseL2b=function(c,j){
+	// evaluate for month shorthands
+	var ev=/(Jan.|Feb.|Mar.|Apr.|May.|Jun.|Jul.|Aug.|Sep.|Oct.|Nov.|Dec.)\W$/gi;
+	var er=ev.test(c[j]); if(er) return true;
+
+	// evaluate for company/personal shorthands
+	var ev=/(Ltd.|Inc.|Co.|Mr.|Dr.|Jr.|Sr.|Corp.)\W$/gi;
+	var er=ev.test(c[j]); if(er) return true;
+
+	// evaluate for initials in name
+	var ev={
+		"longer than 4":	(c[j].length>4),
+		"index -4 is a space":	(c[j].charAt(c[j].length-4)==' ')
+	};
+	var er=true; for(uu in ev) er=er&&ev[uu]; if(er) return true;
+
+	// evaluate for acronyms
+	var ev={
+		"longer than 4":	(c[j].length>4),
+		"index -4 is a period":	(c[j].charAt(c[j].length-4)=='.')
+	};
+	var er=true; for(uu in ev) er=er&&ev[uu]; if(er) return true;
+
+	return false;
+}
+
+// parse level 2: sentences
+parseL2=function(a){
+	var aa=a.replace(/[“”]/gi,'"');
+	var b=aa.split('. '),c=[];
+	// put the period back
+	for(var i in b)
+		if(i<b.length-1) b[i]+='. ';
+
+	// break down from '."'
+	parseL2a(b,'."');	// break down from '."'
+
+	// put dates, initials and abbreviations back together
+	var stillMending=true;
+	while(stillMending){
+		stillMending=false;
+		for(var i in b){
+			var pL2b=parseL2b(b,i);
+			stillMending=stillMending || pL2b;
+			if(pL2b){
+				o('loggy').innerHTML+="\'"+b[i]+"\' to \'";
+				b[i] += b[parseInt(i)+1];
+				o('loggy').innerHTML+=b[i]+"<br>";
+				b.splice(parseInt(i)+1,1);
+				if(parseInt(i)<b.length-1) break;
+			}
+		}
+	}
+
+	parseL2a(b,'! ');	// break down from '! '
+	parseL2a(b,'!"');	// break down from '!"'
+	parseL2a(b,'? ');	// break down from '? '
+	parseL2a(b,'?"');	// break down from '?"'
+
+	// get rid of null elements
+	var d=b.length+1;
+	while(d!=b.length){
+		d=b.length;
+		for(var i in b){ if(b[i].length==0||b[i]==null||b[i]=="") b.splice(i,1); } 
+	}
+	for(var i in b){ var cc=new Sentence; cc.raw=b[i]; /*cc.sentences=parseL2(b[i]);*/ c.push(cc); }
+	return c;
+}
+
+displayParagraphs=function(a){
+	var c="<h4>Paragraphs:</h4>";
+	for(var i in a){
+		c+="<div class=brd>";
+		for(var j in a[i].sentences){
+			c+="<div class=brd>";
+			if(a[i].sentences[j].isHeadline()) c+="<h4>";
+			c+=a[i].sentences[j].raw;
+			if(a[i].sentences[j].isHeadline()) c+="</h4>";
+			c+="</div><br>";
+		}
+		c+="</div><br>";
+	}
+	return c;
+}
+
+</script>
+<table width=100%><tr><td width=40% valign=top>
+
+<textarea rows=90 cols=58 id=newstext>
+U.S. Lawmakers Agree on $789 Billion Stimulus Plan (Update3) 
+Email | Print | A A A 
+
+
+By Brian Faler and Ryan J. Donmoyer
+
+Feb. 11 (Bloomberg) -- U.S. lawmakers agreed on a $789 billion economic stimulus plan that President Barack Obama said is urgently needed to keep the country from sliding into a deeper recession. 
+
+Following weeks of debate and negotiations in Washington, Senate Majority Leader Harry Reid told reporters today that lawmakers reached “middle ground” on a plan he said would create 3.5 million jobs. The House may vote on the plan as early as tomorrow. The Dow Jones Industrial Average rose 50.65 points, 0.6 percent, to 7,939.53. 
+
+“It is a jobs bill,” said Democratic Senator Ben Nelson of Nebraska, an architect of the compromise. “And today you might call us the jobs squad.” Nelson and several other senators had insisted that the stimulus plan total less than $800 billion. 
+
+“We hung tough” in the negotiations, said Senator Arlen Specter of Pennsylvania, one of three Republicans who helped pass the Senate version yesterday after forcing Democrats to agree to reductions. 
+
+“The votes are there for passage, that is clear,” said Senate Finance Committee Chairman Max Baucus, a Montana Democrat. 
+
+Baucus said about 35 percent of the plan consisted of tax cuts and the remainder would be government spending. The package is smaller than the $838 billion Senate bill and the $819 billion measure passed by the House last month. Obama had said he wanted a bill on his desk by the Feb. 16 Presidents’ Day holiday. 
+
+Payroll Tax Credit 
+
+During a meeting of the House-Senate conference committee held after the agreement was announced, Republican Representative Jerry Lewis of California complained that lawmakers didn’t have enough details on the plan. 
+
+Baucus said lawmakers scaled back Obama’s proposed payroll tax credit to $400 for individuals and $800 for families rather than the original proposal of $500 and $1,000. The senator said the plan includes an alternative minimum tax cut. 
+
+Negotiators all but eliminated the biggest tax cut for businesses, a provision that would let companies convert losses into tax refunds, Baucus said. He said the provision, which would have let companies claim an estimated $67.5 billion in tax refunds this year and next, was sacrificed to help keep the final package under $800 billion. A proposed $15,000 tax credit for homebuyers was reduced to $8,000, Baucus said. 
+
+Democratic Senator Barbara Mikulski of Maryland said her plan to aid the auto industry by letting car buyers take a tax write-off on their interest payments has been reduced to $2 billion from the original $11 billion. She said she didn’t have details. 
+
+Unemployed Workers 
+
+The bill includes $59 billion in aid for unemployed workers in families, including $27 billion to extend unemployment benefits for 20 additional weeks in most states and 33 additional weeks in states with high unemployment rates. It also increases weekly benefits by $25. 
+
+Also for the unemployed, the bill expands a federal subsidy to help jobless workers keep their health benefits by paying 60 percent of their premiums for nine months for married couples who earn under $250,000. 
+
+The bill authorizes a one-time $250 payment for senior citizens, disabled veterans and disabled people living on Social Security benefits. 
+
+It provides $90 billion for federal funds for Medicaid, the health insurance program for the poor, and $19 billion to facilitate the digitization of health records. 
+
+Remaining Differences 
+
+Some details were yet to be worked out. Democratic Representative Charles Rangel of New York, leaving a meeting with House Speaker Nancy Pelosi of California, said he was confident remaining differences with the Senate over taxes could be ironed out. 
+
+White House spokesman Robert Gibbs said Obama “is focused not on what the score is on the outcome, but how many jobs this plan can and will create to put people back to work.” 
+
+Obama left the White House today for a third straight day to stump for the stimulus plan, traveling to a road construction site in Virginia to underscore his argument that the package will create or save as many as 4 million jobs. 
+
+“Across the country, states need help and with my plan help is what they will get,” Obama said in Springfield, about 20 miles (32.2 kilometers) south of the White House. 
+
+Final negotiations over the plan began in earnest yesterday after the Senate passed its bill. Talks continued into the night and resumed this morning. 
+
+Nelson said the negotiations included Emanuel and the three Senate Republicans who voted with Democrats for that chamber’s plan: Specter and Maine Republicans Susan Collins and Olympia Snowe. 
+
+“There’s nothing like a deadline to force people to give and take a little bit,” Baucus said. 
+
+To contact the reporters on this story: Brian Faler in Washington at bfaler@bloomberg.net; Ryan J. Donmoyer in Washington at rdonmoyer@bloomberg.net
+</textarea><br>
+	<input type=button value="Parse into paragraphs" onclick="newsItem=parseL1(o('newstext').value);o('output').innerHTML=displayParagraphs(newsItem);"><br>
+
+
+</td><td width=60% valign=top align=left id=output>
+</td></tr></table><hr><div class=brd id=loggy><i>Logger:</i><br></div></html>
+<script>
+newsItem=parseL1(o('newstext').value);
+o('output').innerHTML=displayParagraphs(newsItem);
+</script>

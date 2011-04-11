@@ -1,0 +1,59 @@
+// in: (dd/mm/yyyy)
+// out: JS Date object
+function toDate(dateString){
+	var fields=dateString.split("/");
+	// clear out leading zeros, else parseInt fails (assumes octal#)
+	for(var i in fields){
+		fields[i]=(fields[i][0]=="0")?fields[i].substr(1):fields[i];
+	}
+
+	var dd=parseInt(fields[0]); if(!(dd>0 && dd<32)) return "Bad day. "+dd;
+	var mm=parseInt(fields[1]); if(!(mm>0 && mm<13)) return "Bad month. "+mm;
+	var yyyy=parseInt(fields[2]); if(!(yyyy>0)) return "Bad year. "+yyyy;
+
+	return new Date(yyyy,mm-1,dd);
+}
+
+
+
+// in: 2 x (dd/mm/yyyy)
+// out: number of weekdays (including the boundaries if appl.)
+function nWeekdays(d1,d2){
+	var dayFactor=1/86400000;
+	var a=[toDate(d1),toDate(d2)];
+	var days=Math.abs(a[1].valueOf()-a[0].valueOf())*dayFactor;
+
+	// reorder the dates, so b[1] is the end date.
+	if(a[0].valueOf()>a[1].valueOf()){
+		var b=[a[1],a[0]];
+	}else{
+		var b=a;
+	}
+	
+	var weekdays=0;
+
+	// for boundary dates
+	var wd1=b[0].getDay();
+
+	// periods of greater than 7 days
+	weekdays+=5*Math.floor(days/7);
+	days%=7;
+
+	// edge case of same day
+	while(days>=0){
+		switch(wd1){
+			case 1:
+			case 2:
+			case 3:
+			case 4:
+			case 5:
+			weekdays++;
+			case 6:
+			case 0:
+			days--;wd1++;break;
+			case 7:
+			days--;wd1=1;break;
+		}
+	}
+	return weekdays;
+}

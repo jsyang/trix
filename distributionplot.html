@@ -1,0 +1,107 @@
+<html><script src="raphael.js"></script><body></body><script>
+
+    var g;
+
+    var mydistro;
+
+    var debug=[];
+
+// Distribution constructor
+function Distribution(n,bins,rv_func){
+
+    this.values=[];
+    this.frequencies=[];
+    
+    // generate some values 
+    var i=n; while(i--) this.values.push(rv_func());
+    this.values.sort(function(a,b){return a-b;});
+    
+    // calculate frequencies for PDF
+    var range=this.values[this.values.length-1]-this.values[0];    
+    var binwidth=range/bins;
+    
+    for(var i=bins; i>0; i--) this.frequencies.push(0);
+    for(var i in this.values){
+        var j=0;
+        while(this.values[i]>(j+1)*binwidth+this.values[0]) j++;
+        this.frequencies[j]++;
+    }
+    for(var i in this.frequencies) this.frequencies[i]/=n;
+    
+    this.range=range;
+    this.min=this.values[0];
+    
+    // PDF
+    this.p=function(x){
+        var U01=x-this.min/this.range;
+        return (U01>1 || U01<0) ? 0: this.frequencies[(U01*this.frequencies.length)>>0];
+    };
+    
+    // expectation
+    this.mean=0;
+/*--    this was BAD because p(x) is not guaranteed to be a good / consistent 
+        representation of the distribution, same with use for variance
+        
+    for(var i in this.values){
+        var x=this.values[i];
+        this.mean+=x*this.p(x);
+    }
+*/    
+    for(var i in this.values){
+        var x=this.values[i];
+        this.mean+=x;
+    }
+    this.mean/=n;
+
+    // variance
+    this.variance=0;
+    for(var i in this.values){
+        var x=this.values[i];
+        this.variance+=(x-this.mean)*(x-this.mean);
+    }
+    this.variance/=n;
+    
+}
+
+// generate a random value
+function RV(){
+	var r=Math.random;
+	var randomvalue=0;
+	var i=12; while(i--) randomvalue+=r();
+	return (randomvalue-6);
+}
+
+// sum function
+function sum(a){ var r=0; for(var i in a) r+=a[i]; return r; }
+
+function plotPDF(a){
+    var gw=g.width;    
+    var gh=g.height;
+    var f=Math.floor;
+    var k=gw/a.length;
+
+    var pathString="M";
+    var j=0;
+    for(var i in a){
+        var p=a[i];
+        pathString+=f(j*k) + " " + f(gh*(1-p)) + "L";
+        j++;
+    }
+    pathString=pathString.substring(0,pathString.length-1);
+    g.path(pathString);    
+    g.path("M"+(gw>>1)+" 0L"+(gw>>1)+" "+gh);
+    g.path("M0 "+gh+"L"+gw+" "+gh);
+    
+    g.text(64,16,"Mean = "+mydistro.mean.toFixed(3)+"\nVariance = "+mydistro.variance.toFixed(3));
+    
+    return pathString;
+}
+    
+window.onload=function(){
+    g=Raphael(10,10, 1000, 400);
+    mydistro=new Distribution(10000,20,RV);
+    plotPDF(mydistro.frequencies);
+};
+    
+    
+</script></html>

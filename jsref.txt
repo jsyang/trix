@@ -1,0 +1,32 @@
+%%%%%%%%%%%%%%%%%%%%% fast rounding %%%%%%%%%%%%
+
+x>>0
+
+%%%%%%%%%%%%%%%%%%%%% convert relative position to absolute %%%%%%%%%%%%
+
+function getPageCoords (element) {
+var coords = { x: 0, y: 0 };
+while (element) {
+coords.x += element.offsetLeft;
+coords.y += element.offsetTop;
+element = element.offsetParent;
+}
+return coords;
+}
+
+var coords = getPageCoords(someElement);
+// use coords.x and coords.y here
+
+%%%%%%%%%%%%%%%% JSON Object reading %%%%%%%%%%%%%%%%
+o = JSON Object;
+for(i in o) w(i+'\t'+o[i]);
+
+
+%%%%%%%%%%%%%%%%%% regexp matching %%%%%%%%%%%%%%%%%%
+a=a.replace(new RegExp("[\\.,!\\?;:]",["g"]),"");
+
+%%%%%%%%%%%%%%%% javascript has item in object/hashtable %%%%%%%%%%
+
+this.hasItem = function(in_key){
+	return typeof(this.items[in_key]) != 'undefined';
+}

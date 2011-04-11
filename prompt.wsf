@@ -1,0 +1,14 @@
+<!-- Test.wsf -->
+<job id="InputBoxInJS">
+   <script language="VBScript">
+      Function VBInputBox(promptText)
+        VBInputBox = InputBox(promptText)
+      End Function
+   </script>
+
+   <script language="JScript">
+      WScript.Echo("Hello from JScript")
+      var x = VBInputBox("Enter text")
+      WScript.Echo(x)
+   </script>
+</job>

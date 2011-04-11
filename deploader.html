@@ -1,0 +1,100 @@
+<html><script>
+/********************** pseudocode for the load function ***********************
+
+load(M){
+	if(!load-module(M)){
+		for(i in deps(M)) load(i);
+	}
+}
+
+all OK
+
+*******************************************************************************/
+
+// pretend main memory, that we're loading into, only names, not actual objects
+var mem={};
+var loadLog="";
+
+function inMem(a){
+	return typeof(mem[a])!="undefined";
+}
+
+// Module constructor
+function M(name,d){
+	this.name=name;
+	this.d=d;
+}
+
+// as defined by the interview question
+function deps(m){
+	return m.d;
+}
+
+// as defined by the interview question
+function load_module(M,origin){
+	var loadedOK=true;
+	var d=deps(M);
+	
+	for(var i in d){
+		if(!load_module(d[i])) return false;
+	}
+	if(inMem(M.name)){
+		loadedOK &= (origin==undefined);				// is in mem already,
+	}else{
+		if(origin==undefined) return false;				// not in mem, also is a dep of the root, fail.
+		mem[M.name]=0;							// load the top level into memory.
+		loadLog+="Loaded module "+M.name+".\n";
+	}
+	return loadedOK;
+}
+
+// define the sample tree
+var sampleDepTree=
+
+new M("A",[
+	new M("B",[
+		new M("G")
+	]),
+	new M("C",[
+		new M("D",[
+			new M("H"),
+			new M("I"),
+			new M("J",[
+				new M("M"),
+				new M("N",[
+					new M("Q",[
+						new M("R")
+					])
+				]),
+				new M("O")
+			]),
+			new M("K",[
+				new M("P")
+			])
+		]),
+		new M("F"),
+		new M("E")
+	])
+]);
+
+function load(m){
+	if(inMem(m.name)) return true;
+	while(!load_module(m,0)){
+		var d=deps(m);
+		for(var i in d) load(d[i]);	
+	}
+	return true;
+}
+
+// extra stuff to see if i did this shit correctly
+// do a loadLog to see all the module load orders
+function code_GOD_loads(m){
+	mem[m]=0;
+	loadLog+="code GOD loaded module "+m+".\n"; 
+}
+
+code_GOD_loads("P");
+code_GOD_loads("I");
+load(sampleDepTree);
+
+</script></html>

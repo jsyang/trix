@@ -1,0 +1,91 @@
+<html><style>
+table {font: 10px verdana}
+</style><script src=../yang.js></script><script>
+
+Object.prototype.hasKey=function(key){						// hashtable hasKey
+	return typeof(this[key]) != 'undefined';
+};
+
+Object.prototype.toCode=function(){						// export as code
+	var code="{";
+	for(var i in this){
+		if(typeof(this[i])!='function'){
+			code+=i+":"+this[i]+",";
+		}
+	}
+	return code+"}";
+};
+
+Object.prototype.toTable=function(wordCount){					// export as HTML
+	var a="<table><tr><th>WORD</th>"+
+			"<th>INSTANCES</th><th>% OF TOTAL</th></tr>";
+	for(var i in this){
+		if(typeof(this[i])!='function'){
+			a+=	"<tr><td>"+i+"</td>"+
+				"<td>"+this[i]+"</td>"+
+				"<td>"+Math.round(this[i]/wordCount*10000)/100+"</td></tr>";
+		}
+	}
+	return a+"</table>";
+};
+
+/* ****** some objects to clean up the text filters *******
+
+function (rawText){
+	this.
+String.prototype.wikiFilter=function(){
+	
+*********************************************************** */	
+
+//var t="stat 231 machine-learning, pattern recognition!!!!";
+//var t="blah blah blah[1] blah blah [citation needed]";
+
+var t="Starting with the seminal work of Gale and Shapley (1962) and Becker (1973), economic models of marriage markets predict how marriages are formed, and make statements about the efficiency of the realized matches. The predictions of these models are based on a speci?cation of mate preferences, the mechanism by which matches are made, and the manner in which the market participants interact with the mechanism. Accordingly, the empirical literature on marriage markets has focused on learning about mate preferences, and how people ?nd their mates. Our paper contributes to this literature using a novel data set obtained from an online dating service. We provide a description of how men and women interact in this dating market, and utilize detailed information on the search behavior of site users to infer their revealed mate preferences. Our data allows us to estimate a very rich preference speci?cation that takes into account a large number of partner attributes, including detailed demographic and socioeconomic information, along with physical characteristics. We use the preference estimates to investigate the empirical predictions of the classic Gale-Shapley model, especially with regard to marital sorting patterns.";
+
+						// text replacement- ORDER IS IMPORTANT HERE
+t=t.replace(/\'s/gi," ");			// remove possessives
+t=t.replace(/\[[\s|\w]*\]/g, " ");		// remove citation marks
+t=t.replace(/-/g,"");				// remove all dashes, for connected words
+t=t.replace(/\W/g," ");				// remove all non-alpha numeric chars
+t=t.replace(/[\s]/g," ");			// replace all whitespace with a single space
+t=t.toLowerCase();				// normalize all alpha-characters
+
+var t_=t.split(" ");
+var hasht={};
+
+var i=t_.length;
+var wordCount=0;
+while(i-->0){					// update counts for words
+	if(t_[i].length>0){			// discard empty strings ""
+		if(!hasht.hasKey(t_[i])){
+			hasht[t_[i]]=1;
+		}else{
+			hasht[t_[i]]++;
+		}
+		wordCount++;
+	}
+}
+
+y.w(hasht.toTable(wordCount));
+
+
+/******** string distance functions ***********/
+
+function strDist(a,b){
+	var al=a.length;
+	var bl=b.length;
+	
+	var dist=0;
+	
+	if(0==al-bl){
+		while(al-->0){
+			if(a.charAt(al)!=b.charAt(al)) dist++;
+		}
+		dist/=bl;
+	}
+	
+	return dist;
+}
+
+
+</script></html>

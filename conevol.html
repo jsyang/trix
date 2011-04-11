@@ -1,0 +1,26 @@
+<html><script>
+function approxConeVol(h,r,n){
+	// build tons of tiny cylindrical slabs and add them up to approx the interior vol
+	// THIS. IS. CALCULUSSSSSSSSSSSSSSSSSS!
+	var h2r=r/h;
+	var dh=h/(n-1);		// n-1 because we want our slabs to fit inside
+	var dr=dh*h2r;
+	var approxVolume=0;
+	var piH=Math.PI*dh;
+	for( var th=h-dh, tr=r-dr; th>0 && tr>0; th-=dh, tr-=dr){
+		approxVolume+=piH*tr*tr;
+	}
+	
+	return approxVolume;
+
+}
+
+function realConeVol(h,r){
+	return (r*r*h*Math.PI)/3;
+}
+
+function discrep(h,r,n){
+	return realConeVol(h,r)-approxConeVol(h,r,n);
+}
+
+</script></html>

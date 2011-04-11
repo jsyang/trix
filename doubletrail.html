@@ -1,0 +1,284 @@
+<html><body></body><script src="raphael.js"></script><script>
+
+var g=Raphael(10,10, 1000, 300);
+
+// Irwin-Hall distribution to approximate normal(0,1)
+function irwin_hall(){ var r=0, i=12; while(i--) r+=Math.random(); return r-6;}
+
+function Market(){
+    
+    this.base_price=0;
+    this.prices=[];
+    this.times=[];
+    
+    this.maxmin=[];
+    
+    this.setup=function(p0,pE){ 
+        this.base_price=p0;
+        var rnd=function(a){return Math.floor(a*1000)/1000;};
+        var r=Math.random;
+        var p=parseInt;
+
+        // make ticks for pre-event
+        var i=20; while(i--) this.prices.push(rnd( p0*0.00015*irwin_hall()+p0 ));
+
+        // make ticks for immediate event        
+        var variance=p0*0.02;
+        var biasTendency=(pE-p0);
+        var i=40; while(i--){
+        
+            var bias=p0+((40-i)/40)*biasTendency;            
+            this.prices.push(rnd( bias + variance*irwin_hall() ));
+            variance*=0.9;
+        }
+        
+        // make ticks for post-event
+        var i=20; while(i--) this.prices.push(rnd( pE*0.00015*irwin_hall()+pE ));
+      
+        // make times (unix time values)
+        var baseTime=1288276200000-(500*20);    // 20 x 500ms before event
+        for(var i in this.prices) this.times.push(baseTime+p(i)*500);
+        
+        
+        // set up the range (for plotting)
+        this.maxmin=(function(a){
+            var ma=0,mi=a[0];
+            for(var i in a){
+                if(a[i]>ma) ma=a[i];
+                if(a[i]<mi) mi=a[i];
+            }
+            return [ma,mi];
+        })(this.prices);
+        
+    };
+    
+    this.plot=function(){
+        var f=Math.floor;
+        var gw=g.width;
+        var gh=g.height;
+        var gh2=gh>>1;
+                
+        // draw and label axes
+        g.path("M1 0L1 "+gh);        
+        g.path("M0 "+gh2+"L"+gw+" "+gh2);
+        g.text(4,4,"p").attr({"text-anchor":"start"});
+//      g.text(gw-16,gh2-8,"time");
+               
+        
+        // plot the line graph of ticks
+        var l=gw/this.prices.length;
+        var range=this.maxmin[0]-this.maxmin[1];
+        var pathString="";
+        for(var i=0, x=0; i<this.prices.length; i++, x+=l){
+            var p=this.prices[i];
+            var y=(gh2+f( gh2*(this.base_price-p)/range ));
+            pathString+="L"+f(x)+" "+y;
+            
+            g.path("M"+f(x)+" 0L"+f(x)+" "+gh).attr({"stroke-width":0.05});
+            
+            if(!(i%10) && i){                
+                g.rect(f(x)-1,gh2+1,2,gh2).attr({fill:"270-#cab-#fff",stroke:null});
+                g.text(f(x),gh-48,"$"+this.prices[i]+"\n"+new Date(this.times[i]).toLocaleTimeString()).attr({"text-anchor":"end"});
+                g.circle(f(x),y,4).attr({fill:"#888",stroke:null});
+            }
+        }
+        pathString="M"+pathString.substr(1);
+        g.path(pathString).attr({"stroke-width":2});
+
+        // price line
+        pInfoText=g.text(0,gh-16,"sometext").attr({"text-anchor":"end"});
+        pInfoLine=g.path("M0 0L0 "+gh).attr({stroke:"#2d7"});
+        pInfoLoc=[0,0];
+        
+        return pathString;
+    };
+    
+    this.plotStrategy=function(s){
+        var f=Math.floor;
+        var gw=g.width;
+        var gh=g.height;
+        var gh2=gh>>1;
+        
+        // plot the active trailing stop order
+        var l=gw/this.prices.length;
+        var range=this.maxmin[0]-this.maxmin[1];
+        var pathString="";
+        var st=s.type;
+        
+        for(var i=0, x=0; i<this.prices.length; i++, x+=l){
+            
+            var p=this.prices[i];
+            var y=(gh2+f( gh2*(this.base_price-p)/range ));
+            var alive=s.run(p);
+            
+            
+            if(alive){
+                pathString+="L"+f(x)+" "+y;
+            }else{
+                x-=l;
+                p=this.prices[i-1];
+                // draw execution point
+                g.text(f(x)+2,(st=="buy") ? 8 : 20,"Market "+st+" order executed @ $"+p).attr({"text-anchor":"start"});
+                g.path("M"+f(x)+" 0L"+f(x)+" "+gh).attr({stroke:"#333"});
+                break;
+            }
+        }
+        
+        if(!pathString.length) return;
+        pathString="M"+pathString.substr(1);        
+        g.path(pathString).attr({
+            "stroke-width":8,
+            "stroke": (st=="buy") ? "#c00" : "#00c",
+            "opacity": 0.2
+        });
+        
+        return pathString;
+    };
+    
+}        
+
+// Trailing Stop.
+function TrailingStop(price,trailing,type,amount){
+
+    this.type=type;
+    this.amount=amount;         // shares to transact
+    
+    this.done=0;
+    this.trailed=0;
+    this.trailing=trailing;
+    
+    this.stopPrice_=price;      // original    
+    this.stopPrice=price;       // current
+    this.prevPrice=0;
+    
+    this.reset=function(){
+        this.done=0;
+        this.trailed=0;
+        this.stopPrice=this.stopPrice_;
+        this.prevPrice=0;
+    };
+    
+    this.run=function(cp){
+        var f=Math.floor;
+        var d=this.done;
+        var ty=this.type;
+        var td=this.trailed;
+        var tr=this.trailing;
+        var sp=this.stopPrice;        
+        var pp=this.prevPrice;               
+        
+        if(!pp){ this.prevPrice=cp; return true; }
+        if(d) return false;                
+    
+        // Price change in our favor beyond stop price.
+        if(ty==="buy"  && sp-cp >= tr){ this.stopPrice-=f((sp-cp)/tr)*tr; this.prevPrice=cp; return true; }
+        if(ty==="sell" && cp-sp >= tr){ this.stopPrice+=f((cp-sp)/tr)*tr; this.prevPrice=cp; return true; }        
+       
+        // Price change against stop price.
+        if(td){
+            if((ty==="buy"  && cp>pp && cp<=sp) || (ty==="sell" && cp<pp && cp>=sp)) { this.done=1; this.trailed=0; }
+        }else{
+            // Only trail if we go against it.
+            if((ty==="buy"  && cp>pp) || (ty==="sell" && cp<pp)) this.trailed++; 
+        }
+        
+        this.prevPrice=cp; 
+        return true;
+    };
+}
+
+var pInfoLoc;       // x,y location
+var pInfoText;      // price text -- price @ time
+var pInfoLine;      // price line for dots
+
+// Mousemove event -- gives us tick info
+window.onmousemove=function(e){
+    var gx=e.pageX-10;
+    var gy=e.pageY-10;    
+    var gw=g.width;
+    
+    var i=Math.round(a.prices.length*gx/gw);
+    
+    var price=a.prices[i] || 0;
+    var time=(price) ? new Date(a.times[i]).toLocaleTimeString() : "";
+    
+    pInfoText.attr({text:price+" ["+i+"]\n"+time, x:gx-2});
+    pInfoLine.translate(gx-pInfoLoc[0],0);
+    pInfoLoc=[gx,gy];
+};
+
+// Make a new market for a financial instrument.
+    var a=new Market();
+    a.setup(10.00,10.30); 
+    a.plot();
+
+// Define a strategy.
+    var position={
+        shares: 0,
+        price: 0,
+        net: 0
+    };
+    var strategy=[
+        new TrailingStop(10,0.04,"buy", 600),
+        new TrailingStop(10,0.04,"sell",600)
+    ];
+
+// Plot the strategy.
+    a.plotStrategy( strategy[0] );
+    a.plotStrategy( strategy[1] );
+
+// Re-run the strategy and get the profit/loss if any.
+function StrategyHTML(market,strat,pos)
+{
+    var HTML="<b>Strategy result</b><br>";
+    for(var i in strat) strat[i].reset();
+    for(var i in market.prices)
+    {
+        var p=market.prices[i];
+        for(var j in strat)
+        {
+            var s=strat[j];
+            if(s.trailed && !s.run(p))
+            {
+                if(s.type=="buy")
+                {
+                    pos.shares+=s.amount;
+                    pos.price=p;
+                    pos.net-=s.amount*p;
+                    HTML+=
+                        new Date(market.times[i]).toLocaleTimeString()+ " : "+
+                        ((pos.shares<0)? "Covered short sell " : "Market buy ")+
+                        s.amount+" x "+p+"<br>";
+                                        
+                }
+                else
+                {
+                    pos.shares-=s.amount;
+                    pos.price=p;
+                    pos.net+=s.amount*p;
+                    HTML+=
+                        new Date(market.times[i]).toLocaleTimeString()+ " : "+
+                        ((pos.shares<0)? "Short sell " : "Market sell ")+                        
+                        s.amount+" x "+p+
+                        " --- SP: "+s.stopPrice+"<br>";
+                    
+                }
+            }
+        }
+    }
+    
+    return HTML;
+}
+                    
+// Print the summary of strategy results.
+    var summary = document.createElement("div");
+    summary.style.width=1000;
+    summary.style.position="absolute";
+    summary.style.font="10px verdana";
+    summary.style.left=10;
+    summary.style.top=310;
+    document.body.appendChild(summary);
+    summary.innerHTML=StrategyHTML(a,strategy,position);
+    
+
+</script></html>

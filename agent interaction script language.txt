@@ -1,0 +1,5 @@
+agent interaction language:
+
+sensed _____ respond by using one of its actions on _____
+after _____ time use its actions _____
+check status _____, refer to memory about _____, then do action _____
