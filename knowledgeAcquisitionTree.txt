@@ -1,0 +1,12 @@
+http://www.reddit.com/r/programming/comments/goig6/cojones893_requests_a_talent_tree_for_programming/
+http://www.reddit.com/r/programming/comments/gnr0h/google_opensources_fast_hashing_function/c1p0zn0
+
+Dependencies,
+circular references,
+can we trust other people to fill a knowledge gap? to what end?
+given a problem, what are the steps needed to acquire enough knowledge to solve it? (at least a rough guideline)
+
+can use a poll-like form that's live on some page to get some topic names and some dependencies
+each IP gets to add stuff to a category if it's not there and then vote by ranking their knowledge tree
+in order of ascending level of abstraction.
+

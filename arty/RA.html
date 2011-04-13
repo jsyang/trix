@@ -1,0 +1,57 @@
+<html><style>canvas {border:solid 1px #000;}</style><body></body><script src=gLayer.js></script><script>
+/*********************************************************
+Rocket Artillery Game. With shields.
+Mar. 31, 2011.
+jsyang.ca@gmail.com
+*********************************************************/
+
+function Player(type)
+{
+    this.type=type;
+    var r=Math.random;
+    var f=Math.floor;
+    
+    // Locate the player's base.
+    switch(type){
+        case "human":
+            this.loc=[f(300*r())];
+        case "ai":
+            this.loc=[f(300*r())+500];
+            break;
+        default:
+            return;
+    }    
+       
+    this.ammo=1000;
+    this.fuel=1000;
+    this.shields=4;
+}
+
+function Game()
+{
+    this.kills=0;
+    this.human=new Player("human");
+    this.cpu=new Player("ai");
+    
+    // Generate the terrain
+    (function(t){
+        var r=Math.random;        
+    
+        // Make the terrain bimodal.
+        var peaks=[
+            (r()*800)>>0,
+            (r()*800)>>0
+        ];
+            
+        for(var i=800; i-->0;)
+        {
+            
+
+}
+
+
+// Globals: game and screen
+var game;
+var s=new gLayer([],[800,400],function(){setTimeout("game=new Game()",260);});
+
+</script></html>

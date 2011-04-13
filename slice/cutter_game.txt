@@ -1,0 +1,27 @@
+Game idea for the RIM Playbook:
+
+line split tetris:
+A block appears in the middle of the board, user either drags the block 
+along the vert axis (to move it) OR drags a line across the surface of the 
+block to split it at that location. Both parts "fall" into their respective 
+Left/Right sides.
+
+When the line for one side is filled, the lopsidedness of the block that appears
+in the subsequent cutting board will tend towards that side. You cannot rotate 
+blocks. Indefinite play time. Local high score for now.
+
+Sounds:
+Cutting, mending cut blocks to the sides, losing, next level.
+
+Can't cut horizontally.
+
+
+boardsize: 8 x 16
+blocks:
+              o
+ooo   oo    ooo
+ooo  o o    o o
+
+oo.o    
+o.oo 
+.ooo

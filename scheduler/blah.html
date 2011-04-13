@@ -1,0 +1,167 @@
+<html><link rel=Stylesheet href="s.css" />
+<body>
+<div class=header><script>document.write((new Date()).toLocaleDateString());</script></div>
+</body>
+<script>
+
+var timeDescriptions=
+[
+"a while away from",
+"some time before",
+"somewhat closer to",
+"nearing",
+"approaching",
+"a little bit before",
+"almost at",
+"practically to"
+];
+
+var buttons={
+    play:       "&#52;",
+    pause:      "&#59;",
+    fastforward:"&#56;",
+    stop:       "&#60;"
+};
+
+
+function o(i) { return document.getElementById(i); }
+
+function visButtons(e,hide) { for(var i=3; i-->0;) e.children[i].style.visibility=hide?"hidden":"visible"; }
+
+// Time stuff
+function XhoursFromNow(X) { return (new Date()).valueOf() + X*60*60*1000; }
+function TimeDifference(t1,t2)
+{
+    var later=Math.max(t1,t2);
+    var prior=Math.min(t1,t2);
+    
+    var diff_minutes=(later-prior)*0.00001666666666;
+    return (diff_minutes>60)? Math.floor(diff_minutes/60) + " h " + Math.floor(diff_minutes%60) + " m" : Math.floor(diff_minutes) + " m";
+}
+
+// Task Queue Mgmt
+var taskInFocus=-1;
+var taskQueue=[];
+taskQueue.updateAllTaskTimes=function()
+{
+    for(var i=0; i<this.length; i++)
+    {
+        
+        // time description
+        this[i].e.children[0].innerHTML=(this[i].paused)? "paused" : TimeDifference((new Date()).valueOf(),this[i].timeLength+this[i].startTime) + " left on ";        
+        
+        var taskProgress=this[i].updateProgress();
+        
+        // update the progress bar
+        this[i].e.children[2].children[0].style.width=Math.floor(taskProgress*1000)/10+"%";
+        this[i].e.children[2].children[0].style.background=(this[i].paused)? "#9a9" : "#2CE852";
+    }
+};
+
+function Task(name,timeDue,initialProgress)
+{
+
+    // TIME TO DEFAULT TO FINISHING X HOURS LATER.
+    var HOURSLATER=0.15;
+    
+    this.name=name;
+    this.e={};
+    
+    // Default due time is 8 hours from the current time.
+    this.timeDue=(!timeDue)? XhoursFromNow(HOURSLATER) : timeDue;
+    
+    // Progress start time.
+    this.startTime=(new Date()).valueOf();
+    this.initialProgress=initialProgress? initialProgress : 0;    
+    // Default progress is 0.0 (dec%)
+    this.progress=0;
+    
+    // Total length of time for this task from its initial progress.
+    this.timeLength=this.timeDue-this.startTime;
+
+    
+    // Paused status
+    this.paused=1;
+    
+    // Pause the task.
+    this.pause=function()
+    {
+        if(this.paused) return;
+        
+        this.paused=1;
+        this.pauseTime=(new Date()).valueOf();
+        this.initialProgress+=this.progress;
+        this.progress=0;
+    };
+    
+    // Resume the task.
+    this.resume=function()
+    {
+        if(!this.paused) return;
+        
+        this.paused=0;
+        this.startTime=(new Date()).valueOf();
+        this.timeLength=this.timeDue-this.startTime;
+    };
+    
+    this.updateProgress=function()
+    {
+        if(this.paused) return this.initialProgress;
+        if(this.progress>=1) return 1;
+        return this.initialProgress+(this.progress=((new Date()).valueOf()-this.startTime)/(this.timeLength));
+    };
+   
+    var id=taskQueue.length;
+    
+    var newTaskHTML=
+    "<div id="+id+" class=task>"+
+    "<span class=timeDesc></span>"+
+    "<span class=taskName>"+name+"</span>"+
+    "<div class=progressbar>"+
+        "<span class=progress></span>"+
+        "<span class='progressTick p25'></span>"+
+        "<span class='progressTick p50'></span>"+
+        "<span class='progressTick p75'></span>"+
+    "</div>"+
+    "</div>";
+
+    document.body.innerHTML+=newTaskHTML;
+    setTimeout("taskQueue["+id+"].e=o("+id+");",100);
+}
+
+document.body.onkeypress=function(e)
+{
+    var k=e.keyCode;
+    switch(k)
+    {
+        case 49:
+        case 50:
+        case 51:
+        case 52:
+        case 53:
+        case 54:
+        case 55:
+            if(k-49>taskQueue.length) return;
+            if(!taskQueue[k-49].paused)
+            {
+                taskQueue[k-49].pause();
+            }
+            else
+            {
+                taskQueue[k-49].resume();
+            }
+            break;
+        //default: alert(e.keyCode);    
+    }
+};
+
+taskQueue.push(new Task("prototype blueprint draft v1", XhoursFromNow(2), 0.20));
+taskQueue.push(new Task("smack my hoes up", XhoursFromNow(0.3), 0));
+taskQueue.push(new Task("get money", XhoursFromNow(6), 0.13));
+taskQueue.push(new Task("work on my swagger", XhoursFromNow(3), 0.43));
+
+// Update the progress bars.
+setInterval("taskQueue.updateAllTaskTimes()",300);
+
+</script>
+</html>

@@ -1,0 +1,77 @@
+<html><script src=yang.js></script><script>
+var comm={
+	// --- objects and states ---
+	port:[],
+	
+	boot:function(n){
+		while(n--) comm.port.push(y.async.newASync());
+	},
+	
+	// --- messaging funcs ---
+  	tx: function(pid,url,msg,f){
+		comm.port[pid].open("GET", url+msg, true); comm.port[pid].send(null);
+		if(f) comm.port[pid].onreadystatechange=f;
+	}
+
+};
+
+var m={
+	files:[],				// which files to update from
+	c:null,
+	cw:0,ch:0,				// canvas width and height
+	pointer: new Image(),
+	
+	screen:{
+		setup:function(){
+			var body=document.body, html=document.documentElement;
+			var height=Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight),
+				width=Math.max(body.scrollWidth, body.offsetWidth, html.clientWidth, html.scrollWidth, html.offsetWidth);
+			document.body.innerHTML+="<canvas style='z-index:1;position:absolute;left:0;top:0;' width="+width+" height="+height+" id=c></canvas>";
+			m.pointer.src="m.png";
+			m.cw=width, m.ch=height;
+			setTimeout("m.c=y.o('c').getContext('2d');m.c.fillStyle='rgb(0,0,0)';",40);
+		}
+	},	
+	
+	update:{
+		fromServer:function(){
+			var n=m.files.length;
+			//m.c.clearRect(0,0,m.cw,m.ch); // clear canvas
+			while(n--) comm.tx(n,"users/"+m.files[n],"",m.update.otherMice(n));
+		},
+		
+		otherMice:function(n){
+			if(comm.port[n].readyState==4){
+				var a=comm.port[n].responseText;
+				a=a.split(",");
+				m.c.drawImage(m.pointer,parseInt(a[0]),parseInt(a[1]));
+			}
+		},
+
+		files:function(){
+			if(comm.port[7].readyState==4){
+				var a=comm.port[7].responseText.split(",");
+				if(a.length!=m.files.length) m.files=a.slice(0);
+			}
+		}
+	},
+	
+	send:{
+		Mouse:function(e){ comm.tx(8,"mouse.php?","x="+e.pageX+"&y="+e.pageY,null); },	
+		Hello:function(){ comm.tx(7,"status.php?","enter",m.update.files);	}				
+	},
+	
+	setup:function(){
+		comm.boot(9);
+		m.screen.setup();
+		m.send.Hello();
+		window.onmousemove=m.send.Mouse;
+//		setTimeout("m.update.fromServer()",280);
+//		setInterval("m.update.otherMice()",120);
+	}
+	
+};
+
+</script><body onload="m.setup()">
+blah
+</body></html>
