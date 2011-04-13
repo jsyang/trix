@@ -1,0 +1,12 @@
+The Elements of Computing Systems -- test programs using JavaScript as an HDL
+jsyang.ca@gmail.com
+
+Chapter#    Description
+1           Gates are implemented from the ground up.
+2           Various higher level combinatorial chips implemented.
+3           Timers and basic sequential chips.
+4           (empty) Exploratory chapter for Hack assembly code.
+5           Final pieces of the virtual hardware implemented. Top most "chip"
+            is the PC, which includes a Screen and an Input device.
+
+// Originally left off around late Nov. 2010. //////////////////////////////////
