@@ -1,5 +1,8 @@
 <html><body></body><script src="raphael.js"></script><script>
 
+// Trading strategy visualization
+// JSYang.ca - Oct. 18, 2010
+
 var g=Raphael(10,10, 1000, 300);
 
 // Irwin-Hall distribution to approximate normal(0,1)
@@ -137,8 +140,8 @@ function Market(){
     
 }        
 
-// Trailing Stop.
-function TrailingStop(price,trailing,type,amount){
+// Trailing Stop Limit
+function TrailingStopLimit(price,trailing,type,amount){
 
     this.type=type;
     this.amount=amount;         // shares to transact
@@ -186,6 +189,54 @@ function TrailingStop(price,trailing,type,amount){
         return true;
     };
 }
+
+// Trailing Stop (market price order -- immediate execution)
+function TrailingStop(price,trailing,type,amount){
+
+    this.type=type;
+    this.amount=amount;         // shares to transact
+    
+    this.done=0;
+    this.trailed=0;
+    this.trailing=trailing;
+    
+    this.stopPrice_=price;      // original    
+    this.stopPrice=price;       // current
+    this.prevPrice=0;
+    
+    this.reset=function(){
+        this.done=0;
+        this.trailed=0;
+        this.stopPrice=this.stopPrice_;
+        this.prevPrice=0;
+    };
+    
+    this.run=function(cp){
+        var f=Math.floor;
+        var d=this.done;
+        var ty=this.type;
+        var td=this.trailed;
+        var tr=this.trailing;
+        var sp=this.stopPrice;
+        var pp=this.prevPrice;
+        
+        if(!pp){ this.prevPrice=cp; return true; }
+        if(d) return false;                
+    
+        // Price change in our favor beyond stop price.
+        if(ty==="buy"  && sp-cp >= tr){ this.stopPrice-=f((sp-cp)/tr)*tr; this.prevPrice=cp; this.trailed++; return true; }
+        if(ty==="sell" && cp-sp >= tr){ this.stopPrice+=f((cp-sp)/tr)*tr; this.prevPrice=cp; this.trailed++; return true; }        
+       
+        // Price change against stop price. Execute the order immediately @ market price (current one)
+        if(td){
+            if((ty==="buy"  && cp>pp ) || (ty==="sell" && cp<pp )) { this.done=1; this.trailed=0; return false; }
+        }
+        
+        this.prevPrice=cp; 
+        return true;
+    };
+}
+
 
 var pInfoLoc;       // x,y location
 var pInfoText;      // price text -- price @ time
@@ -238,7 +289,7 @@ function StrategyHTML(market,strat,pos)
         for(var j in strat)
         {
             var s=strat[j];
-            if(s.trailed && !s.run(p))
+            if(s.trailed)
             {
                 if(s.type=="buy")
                 {
@@ -269,16 +320,41 @@ function StrategyHTML(market,strat,pos)
     
     return HTML;
 }
-                    
+
+// Use GET variables to set the strategy (not done yet)
+function $_GET(q,s) {
+        s = (s) ? s : window.location.search;
+        var re = new RegExp('&'+q+'=([^&]*)','i');
+        return (s=s.replace(/^\?/,'&').match(re)) ? s=s[1] : s='';
+}
+
+var dataDescription=
+    "Generation of tick data:<br>"+
+    "[1] Pre-event: 20 ticks i.i.d. normal, mean = 10.00, low variance.<br>"+
+    "[2] Response: 40 ticks i.i.d. normal, mean = 10.00 tending to 10.30, high tending to low variance.<br>"+
+    "[3] Post-event: 20 ticks i.i.d normal, mean = 10.30, low variance.<br>";
+
+var strategyDescription={
+    "trailingstop":
+        "Using TRAILING STOP ORDER (instant execution at market price).<br>",
+    "trailingstoplimit":
+        "Using TRAILING STOP LIMIT ORDER (instant execution at market price). <br>"
+}
+        
+     
 // Print the summary of strategy results.
     var summary = document.createElement("div");
     summary.style.width=1000;
     summary.style.position="absolute";
     summary.style.font="10px verdana";
-    summary.style.left=10;
-    summary.style.top=310;
+    summary.style.left=0;
+    summary.style.top=320;
     document.body.appendChild(summary);
-    summary.innerHTML=StrategyHTML(a,strategy,position);
+    summary.innerHTML=
+        dataDescription+"<br>"+
+        strategyDescription[$_GET("strat")]+"<br>"+
+        StrategyHTML(a,strategy,position);
     
 
 </script></html>
+ 

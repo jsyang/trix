@@ -1,0 +1,17 @@
+-------------- pen doodler toy for web pages ---------------
+by JSYang ~ mie_686@yahoo.com
+------------------------------------------------------------
+
+
+To install the pen toy in your browser add a bookmark to the
+bookmark toolbar with the URL:
+
+javascript:var scr0=document.createElement("script");scr0.src="http://mrktbrain.com/pen/yang.js";document.getElementsByTagName("html")[0].appendChild(scr0);
+var scr1=document.createElement("script");scr1.src="http://mrktbrain.com/pen/pen.js";document.getElementsByTagName("html")[0].appendChild(scr1);var scr2=document.createElement("script");scr2.src="http://mrktbrain.com/pen/penload.js";document.getElementsByTagName("html")[0].appendChild(scr2);void(0);
+
+and name it something like "Draw on current page" or something
+like that. Then whenever you want to mark up a page click on
+the button in the bookmarks toolbar. Hit Y to save a drawing
+locally, and X to load a drawing. Hit Z to toggle between the
+web page and drawing as the foreground.
+
