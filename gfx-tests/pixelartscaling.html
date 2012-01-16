@@ -1,0 +1,257 @@
+<html><script src=gLayer.js></script><body><script>var gL=new gLayer(["manimani.png"],[400,400]);</script>
+<hr>
+
+Press key to apply filter:<br>
+<b>1</b> = Apply EPX (2x)<br>
+<b>2</b> = Apply Scale3x (3x)<br>
+<b>3</b> = Apply Eagle (2x)<hr>
+
+First image is the original sized pixel art, next is the
+bilinear scaling up to the size for which the filter ought
+to give. Last is the up-scaled image created by applying the
+filter.
+
+</body><script>
+/*
+
+2D pixel art scaling algorithms
+Feb. 28th, 2011
+
+"manimani.png"     sample with Earthbound enemy sprite
+
+jsyang.ca@gmail.com
+
+*/
+
+// Simplify ImgData manipulation with these functions. /////////////////////////
+
+    function get(imgdata,i)
+    {
+        return [
+            imgdata.data[i+0],
+            imgdata.data[i+1],
+            imgdata.data[i+2],
+            imgdata.data[i+3]
+        ];
+    }
+    
+    function set(imgdata,i,RGB)
+    {
+        imgdata.data[i+0]=RGB[0];
+        imgdata.data[i+1]=RGB[1];
+        imgdata.data[i+2]=RGB[2];
+        imgdata.data[i+3]=RGB[3]?RGB[3]:0xff;
+    }
+    
+    function eq(RGB1,RGB2)
+    {
+        var equal=true;
+        for(var i in RGB1) equal &= RGB1[i]==RGB2[i];
+        return equal;
+    }
+
+// Scaling algorithms //////////////////////////////////////////////////////////
+
+function Eagle(ctx,img)
+{
+    var w=img.width;
+    var h=img.height;
+    
+    var oldImg=ctx.getImageData(0,0,w,h);
+    var newImg=ctx.createImageData(w*2,h*2);
+
+    // Compose the scaled image
+    for(var y=0, y2=0 ; y<h ; y++, y2+=2)
+    {
+        for(var x=0, x2=0 ; x<w ; x++, x2+=2)
+        {
+            var i1=((x2)+(y2)*w*2)<<2;
+            var i2=((x2+1)+(y2)*w*2)<<2;
+            var i3=((x2)+(y2+1)*w*2)<<2;
+            var i4=((x2+1)+(y2+1)*w*2)<<2;
+            
+            var iS=((x-1)+(y-1)*w)<<2;
+            var iT=((x)+(y-1)*w)<<2;
+            var iU=((x+1)+(y-1)*w)<<2;
+            var iV=((x-1)+(y)*w)<<2;
+            var iC=((x)+(y)*w)<<2;
+            var iW=((x+1)+(y)*w)<<2;
+            var iX=((x-1)+(y+1)*w)<<2;
+            var iY=((x)+(y+1)*w)<<2;
+            var iZ=((x+1)+(y+1)*w)<<2;
+            
+            var S=get(oldImg,iS);
+            var T=get(oldImg,iT);
+            var U=get(oldImg,iU);
+            var V=get(oldImg,iV);
+            var C=get(oldImg,iC);
+            var W=get(oldImg,iW);
+            var X=get(oldImg,iX);
+            var Y=get(oldImg,iY);
+            var Z=get(oldImg,iZ);
+            
+            // 1=P, 2=P, 3=P, 4=P
+            set(newImg,i1,C);
+            set(newImg,i2,C);
+            set(newImg,i3,C);
+            set(newImg,i4,C);
+            
+            // Corners and adjacent edges
+            if( eq(V,S) && eq(S,T) ) set(newImg,i1,S);
+            if( eq(T,U) && eq(U,W) ) set(newImg,i2,U);
+            if( eq(V,X) && eq(X,Y) ) set(newImg,i3,X);
+            if( eq(W,Z) && eq(Z,Y) ) set(newImg,i4,Z);
+        }
+    }
+        
+    // Draw the scaled image, nearest neighbor
+    ctx.drawImage(img,w,0,w*2,h*2);
+    
+    // Draw the EPX scaled image for comparison 
+    ctx.putImageData(newImg,w*3,0);
+}
+
+function Scale3x(ctx,img)
+{
+    var w=img.width;
+    var h=img.height;
+    
+    var oldImg=ctx.getImageData(0,0,w,h);
+    var newImg=ctx.createImageData(w*3,h*3);
+
+    // Compose the scale image with EPX
+    for(var y=0, y3=0 ; y<h ; y++, y3+=3)
+    {
+        for(var x=0, x3=0 ; x<w ; x++, x3+=3)
+        {
+            // NUMBER-celled indices
+            var i=
+            [
+                null,
+                ((x3+0)+(y3)*w*3)<<2,
+                ((x3+1)+(y3)*w*3)<<2,
+                ((x3+2)+(y3)*w*3)<<2,
+                ((x3+0)+(y3+1)*w*3)<<2,
+                ((x3+1)+(y3+1)*w*3)<<2,
+                ((x3+2)+(y3+1)*w*3)<<2,
+                ((x3+0)+(y3+2)*w*3)<<2,
+                ((x3+1)+(y3+2)*w*3)<<2,
+                ((x3+2)+(y3+2)*w*3)<<2
+            ];
+            
+            // LETTER-celled indices                
+            var iA=((x-1)+(y-1)*w)<<2;
+            var iB=((x)+(y-1)*w)<<2;
+            var iC=((x+1)+(y-1)*w)<<2;
+            var iD=((x-1)+(y)*w)<<2;
+            var iE=((x)+(y)*w)<<2;
+            var iF=((x+1)+(y)*w)<<2;
+            var iG=((x-1)+(y+1)*w)<<2;
+            var iH=((x)+(y+1)*w)<<2;
+            var iI=((x-1)+(y+1)*w)<<2;
+                            
+            var A=get(oldImg,iA);
+            var B=get(oldImg,iB);
+            var C=get(oldImg,iC);
+            var D=get(oldImg,iD);
+            var E=get(oldImg,iE);
+            var F=get(oldImg,iF);
+            var G=get(oldImg,iG);
+            var H=get(oldImg,iH);
+            var I=get(oldImg,iI);
+            
+            // 1=E, 2=E, ... , 9=E
+            for(var j in i) if(i[j]!=null) set(newImg,i[j],E);
+            
+            // Corners
+            if( eq(D,B) && !eq(D,H) && !eq(B,F) ) set(newImg,i[1],D);
+            if( eq(B,F) && !eq(B,D) && !eq(F,H) ) set(newImg,i[3],F);
+            if( eq(H,D) && !eq(H,F) && !eq(D,B) ) set(newImg,i[7],D);
+            if( eq(F,H) && !eq(F,B) && !eq(H,D) ) set(newImg,i[9],F);
+            
+            // Edges
+            if( (eq(D,B) && !eq(D,H) && !eq(B,F) && !eq(E,C)) || (eq(B,F) && !eq(B,D) && !eq(F,H) && !eq(E,A)) ) set(newImg,i[2],B);
+            if( (eq(H,D) && !eq(H,F) && !eq(D,B) && !eq(E,A)) || (eq(D,B) && !eq(D,H) && !eq(B,F) && !eq(E,G)) ) set(newImg,i[4],D);
+            if( (eq(B,F) && !eq(B,D) && !eq(F,H) && !eq(E,I)) || (eq(F,H) && !eq(F,B) && !eq(H,D) && !eq(E,C)) ) set(newImg,i[6],F);
+            if( (eq(F,H) && !eq(F,B) && !eq(H,D) && !eq(E,G)) || (eq(H,D) && !eq(H,F) && !eq(D,B) && !eq(E,I)) ) set(newImg,i[8],H);
+        }
+    }
+        
+    // Draw the scaled image, nearest neighbor
+    ctx.drawImage(img,w,0,w*3,h*3);
+
+    // Draw the EPX scaled image for comparison 
+    ctx.putImageData(newImg,w*4,0);  
+}
+
+function EPX(ctx,img)
+{   
+    var w=img.width;
+    var h=img.height;
+    
+    var oldImg=ctx.getImageData(0,0,w,h);
+    var newImg=ctx.createImageData(w*2,h*2);
+
+    // Compose the scale image with EPX
+    for(var y=0, y2=0 ; y<h ; y++, y2+=2)
+    {
+        for(var x=0, x2=0 ; x<w ; x++, x2+=2)
+        {
+            var i1=((x2)+(y2)*w*2)<<2;
+            var i2=((x2+1)+(y2)*w*2)<<2;
+            var i3=((x2)+(y2+1)*w*2)<<2;
+            var i4=((x2+1)+(y2+1)*w*2)<<2;
+            
+            var iA=((x)+(y-1)*w)<<2;
+            var iB=((x+1)+(y)*w)<<2;
+            var iC=((x-1)+(y)*w)<<2;
+            var iD=((x)+(y+1)*w)<<2;
+            var iP=((x)+(y)*w)<<2;
+            
+            var P=get(oldImg,iP);
+            var A=get(oldImg,iA);
+            var B=get(oldImg,iB);
+            var C=get(oldImg,iC);
+            var D=get(oldImg,iD);
+            
+            // 1=P, 2=P, 3=P, 4=P
+            set(newImg,i1,P);
+            set(newImg,i2,P);
+            set(newImg,i3,P);
+            set(newImg,i4,P);
+            
+            if( eq(C,A) && !eq(C,D) && !eq(A,B) ) set(newImg,i1,A);
+            if( eq(A,B) && !eq(A,C) && !eq(B,D) ) set(newImg,i2,B);
+            if( eq(B,D) && !eq(B,A) && !eq(D,C) ) set(newImg,i4,D);
+            if( eq(D,C) && !eq(D,B) && !eq(C,A) ) set(newImg,i3,C);                
+        }
+    }
+        
+    // Draw the scaled image, nearest neighbor
+    ctx.drawImage(img,w,0,w*2,h*2);
+    // Draw the EPX scaled image for comparison 
+    ctx.putImageData(newImg,w*3,0);
+}
+
+// Events //////////////////////////////////////////////////////////////////////
+
+document.body.onkeypress=function(e)
+{    
+    var algorithm;
+    switch(e.which)
+    {
+        case 49: algorithm=EPX;     break;
+        case 50: algorithm=Scale3x; break;
+        case 51: algorithm=Eagle;   break;
+        default: return;
+    }
+    
+    var img=gL.i[0];
+    var ctx=gL.c;
+    
+    gL.clear();
+    ctx.drawImage(img,0,0);    
+    algorithm(ctx,img);
+};
+
+</script></html>

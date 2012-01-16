@@ -1,0 +1,61 @@
+<job id="tagger"><script language="JScript" src="common-min.js"/><script language="JScript" src="commonality.js"/><script language="JScript">
+
+/*******************************************************************************
+    SIP-tagger for PDFs -- test
+    JSYANG.CA @ gmail.com
+    
+    includes a stop-word remover
+    
+    23/10/2010
+*******************************************************************************/
+
+// ERROR and QUIT!
+    function err(m){ WScript.Echo(m); WScript.Quit(); }
+
+// VALIDATE: user handed us no file?
+    var args=WScript.Arguments; if(args.length==0) err("No file given.");
+
+// DO MULTIPLE ARGs
+for(var i=args.length-1; i>=0; i--){
+    var a=args(i);
+    
+// VALIDATE: check if extension is PDF, get document name
+    var doc = a.substring(0, a.toUpperCase().lastIndexOf(".PDF"));
+    if(doc.length==0) err("File extension is not .pdf!");
+        
+// SHELL: pdf2txt converter to grab raw text from paper.
+    var wsh=new ActiveXObject("WScript.Shell");
+    var path=WScript.ScriptFullName;
+    path=path.substring(0,path.lastIndexOf("\\"));
+    wsh.Run(path+"\\pdf2txt.exe \""+doc+".pdf\" \""+doc+".raw\"", 7, true);
+
+// INIT: file system stuff
+    var fs=new ActiveXObject("Scripting.FileSystemObject");
+    var raw=fs.OpenTextFile(doc+".raw",1,-2);
+//    var txt=fs.OpenTextFile(doc+".txt",2,-2);
+
+// COMMONALITY: build a commonality -- prune to no more than 7 tags
+    var tags=new Commonality();
+    var rawText="";
+    // start at a minFreq of 1...
+    var m=1;
+    while(!raw.AtEndOfStream) rawText+=raw.ReadLine()+"\n";
+    tags.addbody(rawText);
+    tags.recomp(m);
+    while(tags.commonsSize>7) tags.recomp(++m);
+
+// OUTPUT: write the theme (tag pile) to the summary file
+//    txt.WriteLine(tags.theme());    
+
+// OUTPUT: append the theme to the filename.
+    fs.MoveFile(doc+".pdf",doc+" ("+tags.theme()+").pdf");
+
+
+// CLEAN: remove .raw files and close text streams
+//    txt.Close();
+    raw.Close();
+    fs.DeleteFile(path+"\\*.raw",true);
+    
+}
+
+</script></job>

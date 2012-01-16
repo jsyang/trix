@@ -1,0 +1,6 @@
+http://www.inversereality.org/tutorials/graphics%20programming/3dprojection.html
+http://en.wikipedia.org/wiki/Transformation_matrix
+http://knol.google.com/k/matrices-for-3d-applications-translation-rotation
+http://www.fastgraph.com/makegames/3Drotation/3dsrce.html
+
+http://www.programmersheaven.com/mb/graphics/367170/367170/simplelight-wireframe-3d-graphic-engine-/?S=B20000

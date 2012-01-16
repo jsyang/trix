@@ -1,0 +1,195 @@
+Mar. 16, 2011
+These past few days I've trying to make sense of Carl Banks' winning entry in 
+the 1998 IOCCC after it appeared in some replies in /r/programming. Having seen 
+it a few times before but never in the proper detail, I figured it'd be fun to 
+try and make some sense of what exactly it does. The rest of the page details 
+my attempt into doing so, hopefully in a coherent manner.
+
+I'm most likely not the first person to do this but in the spirit of open 
+source, I've released this document which details my progress in unobfuscating 
+this work.
+
+The original code: <a href=http://www0.us.ioccc.org/1998/banks.c>banks.c</a>
+Author's doc: <a href=http://www0.us.ioccc.org/1998/banks.hint>banks.hint</a>
+Author's blog entry about it: <a href=http://blog.aerojockey.com/post/iocccsim>IOCCC Flight Simulator</a>
+
+Initial comments
+    
+    First observations: the code is short and, most gratefully, there are no 
+    macros. Macros aren't difficult to decipher as you can just run them through
+    the C preprocessor, but the resulting code can take far longer to properly
+    reformat.
+    
+    I also won't be able to compile this code on my main machine which runs 
+    Windows. Perhaps after enough progress is made, I can replace the Xlib parts 
+    with something else that will make it compile.
+
+First steps
+    
+    The first thing we need to do is to speed up reformatting the code, so we 
+    can actually start reading it. Running it through <a href=http://astyle.sourceforge.net/>astyle</a>
+    and 20 minutes of manually fixing up the aftermath gives up something like 
+    this:
+    
+        [banks1.c]
+    
+    The reader will notice that quite a number of statements that both: 
+    change the values of some variables and perform several operations on these
+    new values before evaluating the root statement. Breaking these child 
+    statements out into separate lines will make things clearer as we progress
+    through the code.
+    
+The variables
+
+    By order of most obviously guessed purpose:
+
+    // Time
+    G       a timeval: stores elapsed time in seconds
+            and also a high-resolution value < 1e6 (microseconds)    
+    _       compile time parameter for how long a simulation clock 'tick'
+            should last; set to dt, never changes.
+    dt      compile time: tick
+    
+    // Graphics
+    *e      Xlib Display structure pointer (the only local variable)
+    z       Xlib Window structure
+    k       Xlib GC structure = Graphics Context (draws lines and other stuff like that)
+    
+    // Instruments
+    f       char[] for the instrument readout string, pertaining to that are:
+    l       true airspeed*1.7
+    O       heading indicator (compass)
+    i       altimeter (starting at 1000 ft)
+    
+    // Keyboard Input (all compile time parameters)
+    IT      Increase throttle
+    DT      Decrease throttle
+    FD      Move stick forward
+    BK      Move stick back
+    LT      Move stick left
+    RT      Move stick right
+    CS      Center stick
+    
+    // Scenery data
+    n       3D points' x-coord
+    w       3D points' y-coord
+    s       3D points' -z-coord (up is negative, down positive)
+    y       number of 3D points loaded
+    
+First things first
+    
+    After replacing the single character variables with some more reasonable monikers,
+    and breaking operations out into atomic statements (up until the line), we get this:
+        
+        [banks2.c]
+    
+    Looking at the first portion of the code in main(), there is a small section 
+    where obvious things happen and for the sake of completeness we shall examine 
+    these things:
+    
+        // Open a connection to X display server.
+        Display* display = XOpenDisplay(0);
+        
+        // Initialize Window.
+        window = RootWindow(display,0);
+    
+        // Initialize GC.
+	    graphicsContext = XCreateGC(display,window,0,0);
+	    
+	    // Use black as the default drawing color.
+	    XSetForeground(display, graphicsContext, BlackPixel(display,0));
+
+        // Load scenery data.
+        for
+	    (
+		    ;
+		    scanf("%lf%lf%lf",sceneryX+sceneryMaxIndex,sceneryY+sceneryMaxIndex,sceneryZ+sceneryMaxIndex)+1
+		    ;
+		    sceneryMaxIndex++
+	    );
+        
+        // Makes an InputOutput subwindow from the root window previously in "window".
+        // Size 400x400, white background.
+        window = XCreateSimpleWindow(display,window,0,0,400,400,0,0,WhitePixel(display,0));
+        
+        // Watch for key press events in window.
+        XSelectInput(display, window, KeyPressMask);
+        
+        // Maps the window.
+	    XMapWindow(display,window);
+	
+    Pretty straightforward so far. I think the scanf() call is pretty clever to throw in there,
+    as EOF makes it return -1, which ends up as 0 (so quits loading!). After the next line we're 
+    inside the main sim loop.
+    
+        [banks3.c]
+        
+    The timeval G defined here is only used later on as an argument to select() that represents the  
+    fraction of time (microseconds) to block the execution of the sim process.
+    
+        struct timeval G =
+        {
+            0,
+            dt*1e6
+        };
+        
+            ...
+    
+        select(p=0,0,0,0,&G);
+    
+    There aren't any file descriptor sets, so nothing else really happens here. However, 
+    we can break out the p=0 statement into a new line above the select to help clear things up.
+    
+        p = 0;
+        select(0,0,0,0,&G);
+    
+    Additionally, a simple search for the instances of "p" reveals its purpose as the scenery 
+    counter. The only other statement using p occurs in the instruments sprintf(), where it is 
+    serving the purpose of making things more confusing (that is the point after all).
+    
+        p=l/1.7,    -->     l/1.7,
+    
+    We rename p to sceneryIndex and swap "p = 0" with the first statement of the scenery drawing 
+    loop. Inverting the locations of the variable names also clears up the array pointer syntax,
+    the for loop now becomes:
+        
+		// Draw all the scenery.
+        for(sceneryIndex=0;sceneryIndex<sceneryMaxIndex;)
+        {
+            T = sceneryZ[sceneryIndex] + altitude;
+            E = c - sceneryY[sceneryIndex];
+            D = sceneryX[sceneryIndex] - L;
+            K = D*m - B*T - H*E;
+            
+            W = T*r - I*E + D*P;
+            D = t*D + Z*T - a*E;
+            
+            // Skip delimiter point (0,0,0).
+            if(sceneryX[sceneryIndex] + sceneryY[sceneryIndex] + sceneryZ[sceneryIndex]==0 | K < fabs(W) | fabs(D) > K)
+            {
+                N = 1e4;
+            }
+            else
+            {
+                q = W/K*4E2 + 2e2;
+                C = 2E2 + 4e2/K*D;
+                XDrawLine(display,window,graphicsContext,N,U,q,C);
+                N = q;
+                U = C;
+            }
+            
+            ++sceneryIndex;
+        }
+    
+    Notes:
+    We can remove "N - 1E4 && " from the XDrawLine() call; used for obfuscation.
+    From a reference page for the XDrawLine function, we have that (N,U) and (q,C) are coords
+    of the two points which form the line.
+    
+    An important thing to note is the difference between logical "||" and bitwise OR "|": due to
+    bitwise OR's handling of the bitstream, it must evaluate both expressions to return the 
+    value of the whole expression, while logical OR can quit with the first instance of a true
+    value (!0). Since the if statement that checks for a delimiter point does not have other
+    operations within the bitwise OR expression, both are equal in this case.
+    
+    

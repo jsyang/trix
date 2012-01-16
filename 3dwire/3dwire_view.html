@@ -1,0 +1,238 @@
+<html><body></body>
+<script src=gLayer.js></script>
+<script src=horizon.js></script>
+<script src=pittsburgh.js></script>
+<script>
+/*------------------------------------------------------------------------------
+3D wireframe viewer and .sc loading tool
+Refreshing my 3D transform matrices and writing a first wireframe tool.
+Mar. 22, 2011
+jsyang.ca@gmail.com
+------------------------------------------------------------------------------*/
+
+function dot(v1,v2)
+{
+    var dotproduct=0;
+    for(var i in v1) dotproduct+=v1[i]*v2[i];
+    return dotproduct;
+}
+
+// Object to store a 3D homogenous transformation matrix
+function Matrix3DH(values)
+{
+    this.a=[];
+
+    // Initialize with values.
+    for(var row=0; row<4; row++)
+    {
+        for(var col=0; col<4; col++)
+        {
+            // Default to 0s
+            this.a.push(
+                (values==undefined) ? 0 : values[col+row*4]
+            );
+        }
+    }
+    
+    // Left to right addition.
+    this.add=function(Mtx3D)
+    {
+        for(var i=16; i-->0;)
+        {
+            this.a[i]+=Mtx3D.a[i];
+        }
+    };
+    
+    // Left to right matrix multiplication.
+    this.multiply=function(Mtx3D)
+    {
+        var result=[];
+        for(var row=0; row<4; row++)
+        {            
+            for(var col=0; col<4; col++)
+            {
+                var cellSum=0;
+                for(var i=0; i<4; i++) cellSum+=this.a[i+row*4]*Mtx3D.a[col+i*4];
+                result.push(cellSum);
+            }
+        }
+        return result;
+    };
+    
+    // Left vector multiplication.
+    this.vmultiply=function(v)
+    {
+        // Non-homogenous 3D coords are made homogenous.
+        if(v.length!=4) return;
+        
+        var colSums=[0,0,0,0];
+        for(var i=0; i<4; i++)
+        {
+            for(var row=0;row<4;row++)
+            {
+                colSums[i]+=v[i]*this.a[i+row*4];
+            }
+        }
+        return colSums;
+    };    
+}
+
+
+function Cam3D(eye)
+{
+    // Origin.
+    this.eye=eye;
+    
+    // Camera rotation.
+    this.yaw=0;
+    this.pitch=0;
+    this.roll=0;
+    
+    
+    // 3D rotation matrices.
+    this.My=function()
+    {
+        var sin=Math.sin(this.pitch);
+        var cos=Math.cos(this.pitch);
+        return new Matrix3DH([
+            cos,    0,  -sin,   0,
+            0,      1,  0,      0,
+            sin,    0,  cos,    0,
+            0,      0,  0,      1
+        ]);
+    };
+    
+    this.Mz=function()
+    {
+        var sin=Math.sin(this.yaw);
+        var cos=Math.cos(this.yaw);
+        return new Matrix3DH([
+            cos,    sin,0,      0,
+            -sin,   cos,0,      0,
+            0,      0,  1,      0,
+            0,      0,  0,      1
+        ]);
+    };
+    
+    this.Mx=function()
+    {
+        var sin=Math.sin(this.roll);
+        var cos=Math.cos(this.roll);
+        return new Matrix3DH([
+            1,      0,      0,      0,
+            0,      cos,    sin,    0,
+            0,      -sin,   cos,    0,
+            0,      0,      0,      1
+        ]);
+    };
+    
+    this.rotationTransform=0;
+    
+    // Overall rotation.
+    this.updateRotation=function()
+    {
+        var Mtransform=this.My();
+        Mtransform.a=Mtransform.multiply(this.Mz());
+        Mtransform.a=Mtransform.multiply(this.Mx());
+        
+        this.rotationTransform=Mtransform;
+    };    
+    
+    this.worldTransform=0;
+            
+    // Update the World to local transform matrix.
+    this.updateWorldtoLocal=function()
+    {
+        var right=this.rotationTransform.vmultiply([1,0,0,1]);
+        var up=this.rotationTransform.vmultiply([0,1,0,1]);
+        var look=this.rotationTransform.vmultiply([0,0,1,1]);
+        
+        this.worldTransform=new Matrix3DH([
+            right[0],   up[0],  look[0],    0,
+            right[1],   up[1],  look[1],    0,
+            right[2],   up[2],  look[2],    0,
+            
+            -dot(this.eye,right),
+            -dot(this.eye,up),
+            -dot(this.eye,look),
+            1
+        ]);
+    };
+       
+    this.drawScene=function()    
+    {
+        g.c.clearRect(0,0,400,300);
+        
+        // Update the transformation matrices.
+        this.updateRotation();
+        this.updateWorldtoLocal();
+        
+        for(var i in scene)
+        {
+            var pointCounter=0;
+            for(var j in scene[i])
+            {
+                var homPoint=scene[i][j].slice(0);
+                homPoint.push(1);
+                
+                // World to local of a scenery point.
+                var localPoint=this.worldTransform.vmultiply(homPoint);
+                
+                // Project onto 2D camera plane.
+                //var oneOverZ=(localPoint[2]==0) ? 1 : 1/localPoint[2];
+                //var screenx=localPoint[0]/80+200;   // 40*2
+                //var screeny=-localPoint[1]/60+150;  // 30*2
+                var screeny=localPoint[0]/60+150;   // 40*2
+                var screenx=-localPoint[1]/80+200;  // 30*2
+                
+//                alert(local
+                
+                if( scene[i][j][0]==0 &&
+                    scene[i][j][1]==0 &&
+                    scene[i][j][2]==0 )
+                {
+                    g.c.stroke();
+                    g.c.beginPath();
+                    pointCounter=0;
+                    continue;
+                }
+                if( !pointCounter )
+                {
+                    g.c.stroke();
+                    g.c.beginPath();
+                    pointCounter++;
+                    g.c.moveTo(screenx,screeny);
+                }
+                else
+                {
+                    g.c.lineTo(screenx,screeny);
+                }
+            }
+            g.c.stroke();
+        }
+    };
+    
+    
+    // update the view with pitch
+    this.rot=function(pitch,yaw,roll)
+    {
+        this.pitch=pitch;
+        this.yaw=yaw;
+        this.roll=roll;
+        this.drawScene();
+    };
+}
+
+var scene=[];
+var cam;
+var g=new gLayer([],[400,300],
+    function()
+    {
+        scene.push(horizon,pittsburgh);
+        cam=new Cam3D([0,0,1000,1]);
+        cam.yaw=0.016;
+        setTimeout("cam.drawScene();",100);
+    }
+);
+
+</script></html>

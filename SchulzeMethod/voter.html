@@ -1,0 +1,331 @@
+<html><script>
+// Schulze Method implementation
+// Dec. 18, 2010 -- jsyang.ca@gmail.com
+
+// Data generation to test the Schulze method implementation.
+function makeVoters(nVoters,nCandidates)
+{
+    var v=[];
+    
+    while(nVoters--)
+    {
+        // Begin with empty ballot.
+        var ballot="";
+        var prefName="";
+    
+        // How many preferences for this voter?
+        var maxPrefs=Math.floor(Math.random()*nCandidates);
+        
+        do
+        {
+            if(ballot.indexOf(prefName)<0)
+            {
+                ballot+=prefName;
+            }
+            else
+            {
+                var pref=Math.floor(Math.random()*nCandidates);
+                var prefName=String.fromCharCode(65+pref);
+            }            
+        }
+        while( ballot.length<maxPrefs);
+        
+        v.push(ballot);
+    }
+    
+    return v;
+}
+
+// Make a tally of all the pairwise defeats.
+function CountPairwiseDefeats(Votes,Candidates)
+{
+    var nCandidates=Candidates.length;
+    
+    // Create a tally object.
+    var tally={};
+    
+    // Fill it up with pairwise combinations. For i==j, we can just ignore it later.
+    for(var i=0; i<nCandidates; i++)
+    {
+        for(var j=0; j<nCandidates; j++)
+        {
+            tally[""+Candidates[i]+Candidates[j]]=0;
+        }
+    }
+    
+    // For all the votes,
+    for(var i in Votes)
+    {
+        // Update the tally for each ballot, we only count the forward defeats.
+        // e.g. "ABC" -->   "AB"++  nothing is done to "BA"
+        //                  "AC"++  nothing is done to "CA"
+        //                  "BC"++  nothing is done to "CB"
+        
+        //      "A" -->     "AB"++
+        //                  "AC"++
+        //                  "AD"++
+        //                  "AE"++
+        //                  "AF"++
+        
+        var ballot=Votes[i];
+        
+        var missingCandidates=Candidates.slice();
+        for(var i in ballot) missingCandidates.replace(ballot[i],"");
+        
+        for(var j=0, n=ballot.length; j<n; j++)
+        {
+            // For the ones on the ballot.
+            for(var k=j+1; k<n; k++)
+            {
+                tally[ballot[j]+ballot[k]]++;
+            }
+            
+            // For the missing candidates (not on this ballot)
+            for(var k=0; k<missingCandidates.length; k++)
+            {
+                tally[ballot[j]+missingCandidates[k]]++;
+            }
+        
+        }
+    }
+    
+    return tally;
+}
+
+// Calculate the D matrix (pairwise defeats)
+function PairwiseDefeats(Votes,Candidates)
+{
+    var n=Candidates.length;
+    
+    // Pairwise defeat matrix
+    var d=[];
+    for(var i=0; i<n; i++)
+    {
+        var j=[];
+        // Fill the ith row with 0s.
+        while(j.length<n) j.push(0);
+        // Except for [i][i], which will be -1.
+        j[i]--;
+        
+        // Add to our d matrix.
+        d.push(j);
+    }
+    
+    var tally=CountPairwiseDefeats(Votes,Candidates);
+    for(var i=0; i<n; i++)
+    {
+        for(var j=0; j<n; j++)
+        {
+            if(i==j) continue;
+            d[i][j]=tally[""+Candidates[i]+Candidates[j]];
+        }
+    }
+    
+    return d;
+}
+
+// Show a matrix
+function PrintMatrix(d)
+{
+    var s="\t";
+    for(var i in d) s+="["+parseInt(i)+"]\t";
+    s+="\n";
+    for(var i in d)
+    {
+        s+="["+parseInt(i)+"]\t";
+        for(var j in d[i])
+        {
+            s+=d[i][j]+"\t";
+        }
+        s+="\n";
+    }
+    return s;
+}
+
+// Calculate the P matrix; max strength paths
+// from: http://en.wikipedia.org/wiki/Schulze_method#Implementation
+function MSP(d)
+{
+    var n=d.length;
+    
+    // MSP matrix
+    var p=[];
+    for(var i=0; i<n; i++)
+    {
+        var j=[];
+        // Fill the ith row with 0s.
+        while(j.length<n) j.push(0);
+        // Add to our matrix.
+        p.push(j);
+    }
+    
+    // Set up the initial MSP matrix: if we have no path, make it so.
+    for(var i=0; i<n; i++)
+    {
+        for(var j=0; j<n; j++)
+        {
+            if(i!=j)
+            {
+                p[i][j] = (d[i][j] > d[j][i]) ? d[i][j] : 0;
+            }            
+        }
+    }
+    
+    // Calculate MSP
+    for(var i=0; i<n; i++)
+    {
+        for(var j=0; j<n; j++)
+        {
+            if(i==j) continue;
+    
+            for(var k=0; k<n; k++)
+            {
+                if(i!=k && j!=k)
+                {
+                    p[j][k] = Math.max( p[j][k] , Math.min( p[j][i], p[i][k] ) );
+                }
+            }
+        }
+    }
+    
+    return p;
+}
+
+// Calculate ranked result of voting.
+function SchulzeResults(msp,Candidates)
+{
+    // Ranked list of results
+    var r=[];
+    var n=Candidates.length;
+    var winDescending=function(a,b)
+    {
+        return b.wins-a.wins;
+    };
+    
+    for(var i=0; i<n; i++)
+    {
+        r.push({
+            id:Candidates[i],
+            wins:0
+        });        
+    }
+    
+    // Count the MSP defeats.
+    for(var i=0; i<n; i++)
+    {
+        for(var j=0; j<n; j++)
+        {
+            if(i==j) continue;
+            
+            if(msp[i][j]>msp[j][i])
+            {
+                r[i].wins++;
+            }            
+        }
+        
+    }
+    
+    r.sort(winDescending);
+    
+    return r;
+}
+
+
+/*******************************************************************************
+
+Schulze method implementation details:
+    
+    1. Set up valid choices / candidates.
+    2. Set up ballots = voter prefs for all voters: array of strings.
+    3. Calculate pairwise defeat matrix:
+        -tally defeats
+        -add tallies into d matrix
+    4. Calculate Max Strength Path matrix:
+        -using adapted pseudocode for Floyd-Warshall algorithm.
+    5. Calculate how many MSP defeats each candidates have and sort them.
+        -sorted list is a ranked list of ballot results:
+        -1st in list is 1st ranked in results, etc.
+        
+*******************************************************************************/
+
+
+/*
+// Example from the Wikipedia page on Schulze method.
+var choices="ABCDE";
+
+var voters=[
+"ACBED",
+"ACBED",
+"ACBED",
+"ACBED",
+"ACBED",
+
+"ADECB",
+"ADECB",
+"ADECB",
+"ADECB",
+"ADECB",
+
+"BEDAC",
+"BEDAC",
+"BEDAC",
+"BEDAC",
+"BEDAC",
+"BEDAC",
+"BEDAC",
+"BEDAC",
+
+"CABED",
+"CABED",
+"CABED",
+
+"CAEBD",
+"CAEBD",
+"CAEBD",
+"CAEBD",
+"CAEBD",
+"CAEBD",
+"CAEBD",
+
+"CBADE",
+"CBADE",
+
+"DCEBA",
+"DCEBA",
+"DCEBA",
+"DCEBA",
+"DCEBA",
+"DCEBA",
+"DCEBA",
+
+"EBADC",
+"EBADC",
+"EBADC",
+"EBADC",
+"EBADC",
+"EBADC",
+"EBADC",
+"EBADC"
+];
+
+var pee=[
+[-1,28,28,30,24],
+[25,-1,28,33,24],
+[25,29,-1,29,24],
+[25,28,28,-1,24],
+[25,28,28,31,-1]
+];
+*/
+
+// Example with 6 candidates: A,B,C,D,E,F
+var choices="ABCDEF";
+var voters=makeVoters(100,choices.length);
+
+var dee=PairwiseDefeats(voters,choices);
+var pee=MSP(dee);
+var results=SchulzeResults(pee,choices);
+var final=[];
+for(var i in results) final.push(results[i].id);
+
+
+</script><body></body></html>

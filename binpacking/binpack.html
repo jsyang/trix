@@ -1,0 +1,150 @@
+<html><style>canvas{position:absolute; right:8px; top:8px;}</style><script src=g.js></script><script>
+/*//////////////////////////////////////////////////////////////////////////////
+    Binpacking Heuristics
+    jsyang.ca@gmail.com
+
+    Sept. 17, 2010  Original implementation.
+    Apr.   4, 2011  Refactored code and general cleanup.
+//////////////////////////////////////////////////////////////////////////////*/
+
+function Rect(w,h)
+{
+    this.w=w;
+    this.h=h;
+}
+
+function Level(wLeft,h)
+//  h       Height of the shelf
+//  wLeft   Width left on this level (shelf)
+{
+    this.h=h;
+    this.wLeft=wLeft;
+    this.rects=[];
+    this.insert=function(rect)
+    {
+        if( this.wLeft<rect.w || this.h<rect.h ) return 0;		
+        this.wLeft-=rect.w;
+        this.rects.push(rect);		
+        return 1;
+    };
+}
+
+function Bin(w,insertMethod)
+{
+    this.w=w;
+    this.levels=[];
+    this.pack=insertMethod;
+    this.wastedSpace=function()
+    {
+        var w=0, t=0;
+        for(var i in this.levels)
+        {
+            var l=this.levels[i];
+            w+=this.w*l.h;
+            t+=w;
+            for(var j in l.rects)
+            {
+                var r=l.rects[j];
+                w-=r.w*r.h;
+            }
+        }
+        return w/t;
+    }
+}
+
+// Generate random rects to pack in our bin ////////////////////////////////////
+
+function randomRects(n,wRange,hRange)
+{
+    var rects=[];
+    var r=Math.random;
+    var f=Math.floor;	
+    var wd=wRange[1]-wRange[0];
+    var hd=hRange[1]-hRange[0];
+    var gW=function(){ return wRange[0]+f(r()*wd); };
+    var gH=function(){ return hRange[0]+f(r()*hd); };
+
+    while(n-->0) rects.push(new Rect(gW(),gH()));
+    return rects;
+}
+
+function sortDescendingRects(a,b)
+// Sort priority: height, width.
+{
+    return (a.h!=b.h) ? b.h-a.h : b.w-a.w;
+}
+
+// Binpacking methods //////////////////////////////////////////////////////////
+
+function NextFitDecreasingHeight(rect)
+// Try fitting on the top shelf, else make a new shelf!
+{    
+    if(rect.w>this.w) return 0;
+    var l=this.levels;
+    if(!l.length) l.push(new Level(this.w,rect.h));
+    while(!l[l.length-1].insert(rect))
+    { l.push(new Level(this.w,rect.h)); }
+    return this;
+}
+
+function FirstFitDecreasingHeight(rect)
+// Try fitting on shelves starting from the bottom, else add a new shelf!
+{
+    if(rect.w>this.w) return 0;
+    var l=this.levels;
+    if(!l.length) l.push(new Level(this.w,rect.h));
+
+    for( var i=0, ll=l.length, pushed=false; i < ll ; i++ )
+    { if(pushed=l[i].insert(rect)) break; }
+
+    if(!pushed)
+    {
+        l.push(new Level(this.w,rect.h));
+        l[ll].insert(rect);
+    }
+    return this;	
+}
+
+// DEMO stuff //////////////////////////////////////////////////////////////////
+
+function runSample(method)
+{
+    var rs=randomRects(100,[10,60],[10,60]).sort(sortDescendingRects);
+    var b=new Bin(300,method);
+    for(var i in rs) b.pack(rs[i]);    
+    return b;
+}
+
+function runAggregate(method,n)
+{
+    for(var sum=0, c=0;n-->0;)
+    {
+        var rs=randomRects(100,[10,60],[10,60]).sort(sortDescendingRects);
+        var b=new Bin(300,method);
+        for(var i in rs) b.pack(rs[i]);
+        sum+=b.wastedSpace();
+        c++;
+    }
+    return sum/c;
+}
+
+/*
+
+Method		Wasted space %
+
+NFDH		10.175090164969883
+FFDH		9.347997548411194
+
+FFDH more efficient at space usage, using 1% more total space.
+But of course, much slower, since you start at the bottom shelf every time.
+
+*/
+
+// EVENTS //////////////////////////////////////////////////////////////////////
+var bin;
+window.onload=function()
+{    
+    drawBin(bin=runSample(FirstFitDecreasingHeight),initCanvas());
+    document.getElementById("prebox").innerHTML+="Using the First Fit Decreasing method: "+textLevels(bin);
+};
+</script><body><pre id="prebox"></pre></body></html>

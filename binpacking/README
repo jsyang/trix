@@ -1,0 +1,10 @@
+2D Binpacking
+jsyang.ca@gmail.com
+
+Not much to say: packing algorithm is shelf-based,
+pre-sort the rectangles and use descending height,
+if you can't fit the width of the current rect onto
+the current shelf, create a new shelf.
+
+Implemented from the tutorials:
+http://users.cs.cf.ac.uk/C.L.Mumford/heidi/BinPacking.html

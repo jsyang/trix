@@ -1,0 +1,66 @@
+<job id="sceneryConversion">
+<script language="JScript" src="procfile.js"/>
+<script language="JScript">
+/*
+
+    Scenery converter for IOCCC flight sim scenery geometry.
+    Input format directly from http://www0.us.ioccc.org/years.html#1998_banks.
+    Output = identically sequenced array of 3D coords [x,y,z].
+
+    IN:  *.sc
+    OUT: *.js
+
+*/
+
+
+// 3D points that form our scenery file
+var scene=[];
+
+function ProcLine(s)
+{
+    // SPLIT: break each line into 3D coords.
+        s=s.split(' ');
+        
+    // ATOI: make 'em numbers.
+        for(var i in s) s[i]=parseInt(s[i]);
+       
+    // ADD: new 3D point for our scene.
+        scene.push(s);
+        
+    return '';
+}
+
+function ArrayArraytoString(aa)
+{
+    var s="";
+    for(var i in aa)
+    {
+        s+="["+aa[i]+"]";
+        s+=(parseInt(i)==aa.length-1) ? "\n" : ",\n";
+    }
+    return s;
+}
+
+function ProcSceneryFile(sceneryFile)
+{
+    // Get the path the script is running from.
+        var path=WScript.ScriptFullName;
+        path=path.substring(0,path.lastIndexOf("\\")+1);
+        
+    // Open "word.list", process with ProcLine
+        ProcFile(path+sceneryFile+".sc",ProcLine);
+        
+    // Now that we've grouped the words, spit it all out!
+    // Testing only.
+    // OPEN: file to spit out the word groups!
+    
+        var fs=new ActiveXObject("Scripting.FileSystemObject");
+        var txt=fs.OpenTextFile(path+sceneryFile+".js",2,-2);
+        txt.WriteLine('var '+sceneryFile+'=[\n'+ArrayArraytoString(scene)+'];\n\n');
+        txt.Close();
+}
+
+ProcSceneryFile("pittsburgh");
+
+</script>
+</job>

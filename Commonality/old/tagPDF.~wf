@@ -1,0 +1,42 @@
+<job id="tagger"><script language="JScript" src="common-min.js"/><script language="JScript">
+
+/*******************************************************************************
+    SIP-tagger for PDFs -- test
+    JSYANG.CA @ gmail.com
+    
+    includes a stop-word remover
+    
+    23 2010
+*******************************************************************************/
+
+// ERROR and QUIT!
+    function err(m){ WScript.Echo(m); WScript.Quit(); }
+
+// VALIDATE: user handed us no file?
+    var args=WScript.Arguments; if(args.length==0) err("No file given.");
+
+// VALIDATE: check if extension is PDF, get document name
+    var doc = args(0).substring(0, args(0).toUpperCase().lastIndexOf(".PDF"));
+    if(doc.length==0) err("File extension is not .pdf!");
+        
+// SHELL: pdf2txt converter to grab raw text from paper.
+    var wsh=new ActiveXObject("WScript.Shell");
+    var path=WScript.ScriptFullName;
+    path=path.substring(0,path.lastIndexOf("\\"));
+    wsh.Run(path+"\\pdf2txt.exe \""+doc+".pdf\" \""+doc+".raw\"", 7, true);
+
+// INIT: file system stuff
+    var fs=new ActiveXObject("Scripting.FileSystemObject");
+    var txt=fs.OpenTextFile(doc+".txt",2,-2);
+
+txt.WriteLine(w['a']);
+
+//txt.WriteLine(path+"\\pdf2txt.exe \""+doc+".pdf\" \""+doc+".raw\"");
+
+
+// CLEAN: remove .raw files and close text streams
+    txt.Close();
+    fs.DeleteFile(path+"\\"+doc+".raw");
+    
+
+</script></job>

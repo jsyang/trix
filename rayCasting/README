@@ -1,0 +1,21 @@
+A simple ray-casting engine; loads a map from an image.
+Map edges should contain a bounding box to prevent "leaks".
+
+Player can wander around in the map with ARROW KEYS or WASD.
+
+
+jsyang.ca@gmail.com
+Weekend of Mar. 13, 2011.
+
+------------------------------------------------------------
+
+Tunnel Raycaster
+Mar. 9, 2011
+
+Textured, shaded, ray casting rendering of a tunnel.
+Camera is free to rotate, pan and change focal length.
+
+Controls:
+
+    W     +   mouse look
+  A S D

@@ -1,0 +1,47 @@
+<html><body></body><script>
+/*
+    Stipple-gradient test
+    Feb. 11, 2011
+    jsyang.ca@gmail.com    
+*/
+window.onload=function()
+{    
+    function drawDot(context,x,y)
+    {
+        context.fillRect(x,y,1,1);    
+    }
+
+    var c=document.createElement("canvas");
+    document.body.appendChild(c);
+    c.width=1000;
+    c.height=200;
+       
+    var g=c.getContext('2d');
+    g.fillStyle="black";
+       
+    var f=Math.floor;
+    var r=Math.random;
+    
+    // Step sizes
+    var x=0;
+    var tall=c.height;
+    var wide=c.width;
+    
+    // Gradient parameters
+    var blockWidth=10;
+    var descent=0.85;
+    var stipplePercent=1;
+    
+    while(x<wide)
+    {
+        var numDots=f(stipplePercent*blockWidth*tall);
+        while(numDots-->0)
+        {
+            drawDot(g,x+f(r()*blockWidth),f(r()*tall));
+        }
+        x+=blockWidth;
+        stipplePercent*=descent;
+    }       
+
+};
+</script></html>

@@ -1,0 +1,33 @@
+<html>
+<script src=common-min.js></script>
+<script src=commonality.js></script>
+<script>
+function processArticle(){
+	var a=document.getElementById("fArticle").value;
+	var b=document.getElementById("fThresh").value;
+	
+	c=new Commonality();
+	c.addbody(a);
+	c.recomp(b);	
+	document.getElementById("fTheme").innerText=c.theme();
+}
+
+function newTheme(){
+	var b=document.getElementById("fThresh").value;
+	c.recomp(b);
+	document.getElementById("fTheme").innerText=c.theme();
+}
+
+var c={};
+
+</script><body>
+
+Paste article here:<br><textarea id=fArticle rows=10 cols=150 style="font: 12px arial"></textarea><hr>
+Commonality threshold: <input type=text value=3 id=fThresh> <input type=button value="Process Article" onclick="processArticle()"> 
+<input type=button value="Recompute Theme" onclick="newTheme()">
+<hr><i>Theme-related tokens:</i> <div id=fTheme></div>
+
+
+</body></html>
+
+

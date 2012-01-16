@@ -1,0 +1,3 @@
+Add option to add properties for candidates
+rank the properties of the candidates -->
+candidate with the greatest objectively weighted linear addition of properties wins?

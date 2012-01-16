@@ -1,0 +1,253 @@
+<html><style>canvas {position:absolute; left:0; top:0;}</style><body></body><script src=gLayer.js></script><script>
+/*------------------------------------------------------------------------------
+Ray-casting demo
+Mar. 11, 2011
+jsyang.ca@gmail.com
+------------------------------------------------------------------------------*/
+
+// Simplify ImgData manipulation with these functions.
+    function get(imgdata,i)
+    {
+        return [
+            imgdata.data[i+0],
+            imgdata.data[i+1],
+            imgdata.data[i+2],
+            imgdata.data[i+3]
+        ];
+    }
+    
+    function set(imgdata,i,RGB)
+    {
+        imgdata.data[i+0]=RGB[0];
+        imgdata.data[i+1]=RGB[1];
+        imgdata.data[i+2]=RGB[2];
+        imgdata.data[i+3]=RGB[3]?RGB[3]:0xff;
+    }
+    
+    function eq(RGB1,RGB2)
+    {
+        var equal=true;
+        for(var i in RGB1)
+        {
+            equal &= RGB1[i]==RGB2[i];
+        }
+        return equal;
+    }
+
+// Normalize a vector
+    function VNorm(v)
+    {
+        var length2=0;
+        for(var i in v) length2+=v[i]*v[i];
+        length2=Math.sqrt(length2);
+        for(var i in v) v[i]/=length2;
+        return v;
+    }
+
+// Scale a vector
+    function VScale(v,s)
+    {
+        var v2=v.slice(0);
+        for(var i in v2) v2[i]*=s;
+        return v2;    
+    }
+
+// Sum 2 vectors
+    function VSum(v1,v2)
+    {
+        var v3=[];
+        for(var i in v1) v3.push(v1[i]+v2[i]);
+        return v3;
+    }
+
+// Sum 2 x 2D vectors (faster)
+    function V2DSum(v1,v2)
+    {
+        return [v1[0]+v2[0],v1[1]+v2[1]];
+    }
+
+// Rotate a vector in 2D    
+    function V2DRotate(v,a)
+    {
+        var oldA=Math.atan2(v[1],v[0]);
+        var oldR=Math.sqrt(v[0]*v[0] + v[1]*v[1]);
+        return [
+            oldR*Math.cos(oldA+a),
+            oldR*Math.sin(oldA+a)
+        ];
+    }
+
+// Rotate a vector in 2D with radius 1 (FASTER)
+    function V2DRotateNorm(v,a)
+    {
+        var oldA=Math.atan2(v[1],v[0]);
+        return [
+            Math.cos(oldA+a),
+            Math.sin(oldA+a)
+        ];
+    }
+
+function RayCastCam(loc,ctx,screenSize,horizonImage,mapImage)
+{
+    // Camera properties
+    this.loc=loc;
+    this.angle=0;   // points E to start.
+    
+    this.ctx=ctx;
+    
+    // Screen size
+    this.w=screenSize[0];
+    this.h=screenSize[1];
+    
+    // Horizons -- floor and ceiling, prerendering
+    this.horizon=horizonImage;
+
+    // Load generate the map from image!   
+    this.map=(function(ctx,img)
+    {
+        var level=[];
+        ctx.drawImage(img,0,0);
+        var imgW=img.width;
+        var imgH=img.height;
+        var mapImgData=ctx.getImageData(0,0,imgW,imgH);        
+        
+        
+        for(var i=0; i<imgH; i++)
+        {
+            var row=[];
+            for(var j=0; j<imgW; j++)
+            {
+                row.push( get(mapImgData,(j+i*imgW)<<2)[0]==0 ? 1 : 0 );
+            }
+            level.push(row.slice(0));
+        }        
+        
+        return {
+            tilewidth:8,
+            data:level
+        };
+    })(ctx,mapImage);
+    
+    // Moving forward, backward
+    this.MoveCamera=function(d)
+    {
+        this.loc=V2DSum(this.loc,V2DRotateNorm([d,0],this.angle));
+    };
+    
+    // Render the scene!
+    this.render=function()
+    {
+        // Draw pre-rendered horizon so we don't have to do it again
+        this.ctx.drawImage(this.horizon,0,0,this.w,this.h);
+        
+        // Notation
+        var tw=this.map.tilewidth;
+        var twbs=3; // bitshift version, no division
+        var columnHeightNumerator=this.w<<twbs;
+        var hReciprocal=1/this.h;
+        var tdelta=this.h/(this.w+this.h);
+                
+        // For each column in our screen,
+        for(var i=0,sx=-(this.w>>1);i<this.w;i++,sx++)
+        {
+            
+            // Focal length...
+            var dir=V2DRotateNorm([this.w,sx],this.angle);
+            
+            // Find the tile that the ray has hit
+            var t=0;
+            var oldy=0,oldx=0;
+            do
+            {
+                var hit=0;
+                var y=(this.loc[1]+t*dir[1])>>twbs;
+                var x=(this.loc[0]+t*dir[0])>>twbs;
+                
+                if(this.map.data[y][x]) hit=1;
+                t+=0.24;
+            }
+            while(!hit);
+            
+            var columnHeight=columnHeightNumerator/t;
+            var shadingMultiplier=Math.atan(columnHeight*hReciprocal*5);
+            
+            var gutter=(this.h-columnHeight)/2;
+            
+            var shade=Math.round(shadingMultiplier*256); 
+            ctx.fillStyle="rgb("+shade+","+(shade>>1)+","+(shade>>2)+")";
+            ctx.fillRect(i,gutter,1,columnHeight);
+        }
+    };
+}
+
+
+// Camera.
+var c;
+
+// Movement events
+var turnLR=0;
+var forwardBack=0;
+
+// Dimensions of the camera image / canvas / texture.
+var iw=200; var ih=120;
+
+var gL=new gLayer(
+    ["horizon.png","map.png"],
+    [iw,ih],
+    function(){setTimeout("setupEvents()",200);}
+);
+
+// Update the camera's position and stuff
+function keyboardUpdateCam()
+{
+    if(turnLR) c.angle+=turnLR*0.05;
+    if(forwardBack) c.MoveCamera(forwardBack);    
+    if(turnLR||forwardBack) c.render();
+    turnLR=0;
+    forwardBack=0;
+}
+
+function setupEvents()
+{        
+    // After texture is done loading, create a new camera
+    c=new RayCastCam(
+        [40,30],
+        gL.c,
+        [iw,ih],
+        gL.i[0],
+        gL.i[1]
+    );
+    
+    // Initial view.
+	c.render();
+	
+    // "WASD" event
+    document.body.onkeydown=function(e)
+    {   
+        var k=e.keyCode;
+        if(k==87 || k==38) // W, UP
+        {
+            forwardBack=1;
+        }
+        else
+        if(k==83 || k==40) // S, DOWN
+        {
+            forwardBack=-1;
+        }
+        
+        if(k==65 || k==37) // A, LEFT
+        {
+            turnLR=-1;
+        }
+        else
+        if(k==68 || k==39) // D, RIGHT
+        {
+            turnLR=1;
+        }                
+    };
+    
+    // Update the view as keys are detected.
+    setInterval("keyboardUpdateCam()",20);	
+}
+
+</script></html>

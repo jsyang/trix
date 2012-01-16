@@ -1,0 +1,54 @@
+<html><body></body><script src=gLayer.js></script><script>
+/*
+
+"plasma effect" -- Shifting palettes
+jsyang.ca@gmail.com
+Mar. 12, 2011
+
+*/
+
+// Simplify ImgData manipulation with these functions.
+    function set(imgdata,i,RGB)
+    {
+        imgdata.data[i+0]=RGB[0];
+        imgdata.data[i+1]=RGB[1];
+        imgdata.data[i+2]=RGB[2];
+        imgdata.data[i+3]=RGB[3]?RGB[3]:0xff;
+    }
+
+var plasmaPalette=[];
+var paletteShift=0;
+for(var i=256; i-->0;)
+{
+    // 32,64,128
+    plasmaPalette.push([
+        (128 + 128 * Math.sin(3.1415 * i / 32)),
+        (128 + 128 * Math.sin(3.1415 * i / 64)),
+        (128 + 128 * Math.sin(3.1415 * i / 128))
+    ]);
+}
+
+function drawPlasma(ctx)
+{
+    var ID_plasma=ctx.createImageData(256,256);
+    
+    // Generate texture from current palette
+    for(var y=0; y<256; y++)
+    {
+        for(var x=0; x<256; x++)
+        {
+            var s=Math.sin;
+            var c=(128+(128* s((x+y)/16)) + 128+(128*s((x-y)/16)))/2;
+            set(ID_plasma,(x+y*256)<<2,plasmaPalette[((c>>0)+paletteShift)%256]);
+        }
+    }
+    
+    ctx.putImageData(ID_plasma,0,0);
+    
+    paletteShift+=3;
+    if(paletteShift>256) paletteShift=0;
+}
+
+var g=new gLayer([],[256,256],function(){setInterval("drawPlasma(g.c)",20);});
+
+</script></html>

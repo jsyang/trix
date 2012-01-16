@@ -1,0 +1,53 @@
+<html><script>
+function w(a){document.write(a);}
+
+
+/* Statistically Improbable Phrases.
+jsyang's naive-guess-implementation of how they work
+
+As of Jul. 18, 2010, a preliminary glance at the Wikipedia article for this 
+topic does not reveal much in terms of the implementation nor the technical 
+details that would be required to duplicate the results of site. This is my 
+attempt at a system similar in results and usefulness to the working feature on
+the Amazon book review pages.
+
+
+(( can we use this in determining people's interests and values?... maybe we can
+create machinery to reduce an individual to a (still meaningful english)
+hash value...))
+
+what constitutes a phrase?
+a phrase is an ordered sequence of words 1+ in length
+
+to get phrases, we need a "grammar tree" (GT)
+
+		 phrases (not explicitly present in the GT structure)
+		 /     \
+paragraph > sentence > word
+
+
+[[phrases must be computed once we have broken the sentence into its words.
+these are not just sentence fragments, but rather a collection of words that
+is of arbitrary length and retains the original order of the parent sentence.]]
+
+
+so for each level of parsing, we generate children for the grammar tree node:
+break a paragraph into sentences,
+	sentence into phrases,
+	phrases into words
+	
+to do this, we look at the block of text from the bottom up.
+words are the basic keys of this system.
+
+for each node, we need:
+	-children GT-nodes, top-to-bottom hierarchy
+	-for sentences,
+
+*/
+
+
+
+
+
+
+</script></html>

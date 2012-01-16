@@ -1,0 +1,289 @@
+<html><style>canvas {position:absolute; left:20%; top:10%; width:60%; height:80%}</style><body></body><script src=gLayer.js></script><script>
+/*------------------------------------------------------------------------------
+Free-direction cylinder ray traced demo test from write up at:
+http://www.fabiensanglard.net/RayTracing/freeDirectionTunnel.txt
+Mar. 7, 2011
+Final changes: Mar. 11, 2011
+
+jsyang.ca@gmail.com
+------------------------------------------------------------------------------*/
+
+// Simplify ImgData manipulation with these functions.
+    function get(imgdata,i)
+    {
+        return [
+            imgdata.data[i+0],
+            imgdata.data[i+1],
+            imgdata.data[i+2],
+            imgdata.data[i+3]
+        ];
+    }
+    
+    function set(imgdata,i,RGB)
+    {
+        imgdata.data[i+0]=RGB[0];
+        imgdata.data[i+1]=RGB[1];
+        imgdata.data[i+2]=RGB[2];
+        imgdata.data[i+3]=RGB[3]?RGB[3]:0xff;
+    }
+    
+    function eq(RGB1,RGB2)
+    {
+        var equal=true;
+        for(var i in RGB1)
+        {
+            equal &= RGB1[i]==RGB2[i];
+        }
+        return equal;
+    }
+
+// Normalize a vector
+    function VNorm(v)
+    {
+        var length2=0;
+        for(var i in v) length2+=v[i]*v[i];
+        length2=Math.sqrt(length2);
+        for(var i in v) v[i]/=length2;
+        return v;
+    }
+
+// Scale a vector
+    function VScale(v,s)
+    {
+        var v2=v.slice(0);
+        for(var i in v2) v2[i]*=s;
+        return v2;    
+    }
+
+// Sum 2 vectors
+    function VSum(v1,v2)
+    {
+        var v3=v1.slice(0);
+        for(var i in v3) v3[i]=v1[i]+v2[i];
+        return v3;
+    }
+
+// Rotate along both x, y axis -- basically "mouse look"
+    function RotateXY(v,xangle,yangle)
+    {
+        var cx=Math.cos(xangle);
+        var sx=Math.sin(xangle);
+        var cy=Math.cos(yangle);
+        var sy=Math.sin(yangle);
+            
+        return [
+            v[0]*cy+v[2]*sy,
+            v[1]*cx+v[0]*sy*sx-v[2]*sx*cy,
+            v[1]*sx-v[0]*sy*cx+v[2]*cx*cy
+        ];    
+    }
+
+// Camera object for ray tracing calculations
+function Camera(Origin,ImgRect)
+{
+    /*
+          (yaw)
+            y   z
+            |  /
+            | /
+            |/
+    - - - - r--------- x (pitch)
+           ,:
+          , :
+         ,  :
+       -z
+     (roll)
+
+    Camera is forward facing.
+    Screen image is in front of the Origin,
+    and should move around according to the
+    Direction.    
+    
+    */
+    
+    // ray = Origin + t*Direction, as prescribed by freeDirectionTunnel.txt
+    this.Origin=Origin;
+	this.Direction=[0,0,1];
+    
+    // For changing the direction (mouselook)
+    this.RotationYAngle=0;
+    this.RotationXAngle=0;
+	this.RotationZAngle=0;
+    
+    // Image rect that we project through
+    this.ImgRect=ImgRect;
+    this.redraw=true;
+	
+    // Texture image
+    this.Texture=null;
+    this.TextureWidth=0;
+    
+    this.MoveCameraForward=function()
+    {
+        var dir=RotateXY([0,0,1],this.RotationXAngle,this.RotationYAngle);
+        for(var i=3; i-->0;)
+        {
+            this.Origin[i]-=dir[i]*0.5;
+        }
+    }
+    
+    this.renderImage=function(ctx){
+        // Notation
+        var ori=this.Origin
+        
+        var x1=this.ImgRect.x1;
+        var y1=this.ImgRect.y1;
+        var x2=this.ImgRect.x2;
+        var y2=this.ImgRect.y2;
+                
+        // Cylinder properties
+        var radius=12;
+        var renderLength=64;
+        
+		var focalLength=32;
+		
+        // New scene's ImageData
+        var w=x2-x1;
+        var h=y1-y2;
+        var img=ctx.createImageData(w,h);
+                
+        for(var j=y1, y=0, index=0; j>y2; j--, y++)
+        {
+            for(var i=x1, x=0; i<x2; i++, x++, index+=4)
+            {
+                // Rotate Direction according to the angles received by mouselook.
+                var dir=VNorm(RotateXY([i,j,focalLength],this.RotationXAngle,this.RotationYAngle));
+				
+                // Parts of the quadratic formula.
+                var a=     dir[0]*dir[0] + dir[1]*dir[1];
+                var b=  2*(dir[0]*ori[0] + dir[1]*ori[1]);
+                var c=     ori[0]*ori[0] + ori[1]*ori[1] - radius*radius;
+                
+                var discrimSquared = b*b - 4*a*c;
+                if(discrimSquared<0) continue;
+                
+                // 2 possible t-values for intersection.
+                var t1=(-b+Math.sqrt(discrimSquared))/(2*a);
+                var t2=(-b-Math.sqrt(discrimSquared))/(2*a);
+                
+                // If we don't have a solution, don't pass NaN into Math.min().
+                t1=isNaN(t1)? Infinity : t1;
+                t2=isNaN(t2)? Infinity : t2;
+                
+                var t=Math.min(t1,t2);
+                
+                // Default to black bg if rendering beyond.
+                if(Math.abs(t)>renderLength)
+                {
+                    set(img,index,[0,0,0]);
+                    continue;
+                }
+                                
+                // Texture coordinates, use the pixel at (u,v).
+				
+					// Ate away at the bottom of the texture, if u was given straight to the index (needs %)
+                var u =Math.abs(ori[2] + t*dir[2]) % this.TextureWidth;
+                var v = Math.abs(Math.atan2(ori[1] + t*dir[1], ori[0] + t*dir[0])*(this.TextureWidth-1)/Math.PI);
+                
+                var TextureIndex=(Math.round(u)+Math.round(v)*this.TextureWidth)*4;              
+                
+                var TextureColor=get(this.Texture,TextureIndex);
+                var shadingMultiplier=((Math.atan(t+24)+Math.PI/2)/Math.PI);
+                
+                set(img,index,[
+                    TextureColor[0]*shadingMultiplier,
+                    TextureColor[1]*shadingMultiplier,
+                    TextureColor[2]*shadingMultiplier
+                ]);
+
+            }
+        }    
+        ctx.putImageData(img,0,0);
+		this.redraw=false;		
+    };
+}
+
+// Camera.
+var c;
+
+// Mouse position deltas for looking around.
+var oldPageX, oldPageY;
+var maxPageX=Math.max(document.body.scrollWidth,document.body.offsetWidth,document.documentElement.clientWidth,document.documentElement.scrollWidth,document.documentElement.offsetWidth),
+    maxPageY=Math.max(document.body.scrollHeight,document.body.offsetHeight,document.documentElement.clientHeight,document.documentElement.scrollHeight,document.documentElement.offsetHeight);
+
+// Dimensions of the camera image / canvas / texture.
+var iw=64; var ih=iw;
+
+var gL=new gLayer(
+    ["hive64.png"],
+    [iw,ih],
+    function(){setTimeout("setupEvents()",200);}
+);
+
+
+function setupEvents()
+{
+    // After texture is done loading, create a new camera
+    c=new Camera(
+        [0,0,-iw>>1],
+        {
+            x1:-iw>>1,
+            y1: ih>>1,
+            x2: iw>>1,
+            y2:-ih>>1
+        }
+    );
+    
+    // for the background
+    gL.c.fillStyle="#000000";        
+    gL.c.drawImage(gL.i[0],0,0,iw,ih);    
+    c.Texture=gL.c.getImageData(0,0,iw,ih);
+    c.TextureWidth=iw;
+
+	
+	
+/*  // Set up our mouse zoom (change field of view)
+    document.body.onmousewheel=function(e){};
+//*/
+
+    // "WASD" event
+    document.body.onkeydown=function(e)
+    {    
+        switch(e.keyCode)
+        {
+            case 87:   // W
+                c.MoveCameraForward();
+                break;
+            case 83:   // S
+                break;
+        }
+		c.redraw=true;
+    };
+
+    // "Mouse look" event
+    document.body.onmousemove=function(e)
+    {
+        if(oldPageX==undefined || oldPageY==undefined)
+        {
+            oldPageX=e.pageX;
+            oldPageY=e.pageY;
+        }
+        else
+        {
+            c.RotationYAngle+=(iw/10)*(e.pageX-oldPageX)/(maxPageX);
+            c.RotationXAngle+=(ih/10)*(e.pageY-oldPageY)/(maxPageY);
+            oldPageX=e.pageX;
+            oldPageY=e.pageY;
+        }       
+        c.redraw=true;
+    };
+
+	// Redraw interval
+	setInterval(function(){
+		if(!c.redraw) return;
+        c.renderImage(gL.c);
+	},10);
+	
+}
+
+</script></html>

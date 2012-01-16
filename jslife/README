@@ -1,0 +1,15 @@
+Conway's Game of Life implementation!
+Feb. 19th, 2011
+jsyang.ca@gmail.com
+
+    The rules of the game; from wikipedia:
+        
+        Rule    Condition                       Result
+        1       LIVE CELL WITH 2,3 NEIGHBORS    LIVES
+        2       DEAD CELL WITH 3 NEIGHBORS      LIVES
+        3       OTHERWISE, ANY CELL             DIES
+
+canvaslife.html contains a life game that draws on a <canvas>
+textlife.html contains a life game that draws in text in a <textarea>
+gLayer.js is a custom <canvas> object, includes image loading functionality
+and calls back when done.

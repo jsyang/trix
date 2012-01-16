@@ -1,0 +1,159 @@
+<html><style>
+table {border: #666 solid 1px}
+td {width:6px;height:6px;}
+td.b {background:#fff}
+td.a {background:#000}
+textarea {line-height:6px;}
+</style><body></body><script>
+/*------------------------------------------------------------------------------
+Conway's Game of Life implementation!
+Feb. 19th, 2011
+jsyang.ca@gmail.com
+
+    The rules of the game; from wikipedia:
+        
+        Rule    Condition                       Result
+        1       LIVE CELL WITH <2 NEIGHBORS     DIES
+        2       LIVE CELL WITH 2,3 NEIGHBORS    LIVES
+        3       LIVE CELL WITH >3 NEIGHBORS     DIES
+        4       DEAD CELL WITH 3 NEIGHBORS      LIVES
+
+------------------------------------------------------------------------------*/
+
+
+// Game of Life board.
+function Life(width,height)
+{
+    // Max height is 30, due to number size restrictions.
+    this.width=width;
+    this.height=height;
+    
+    // Rows has the number which is a bitflag for the cells in that row.
+    // Thus rows[] contains the gameboard for the currrent generation.
+    this.rows=[];
+    
+    var r=Math.random;
+    
+    // Fill rows[] with random data for now.
+    for(var i=height;i-->0;)
+    {
+        this.rows.push(
+            (r()*(1<<width))>>0
+        );
+    }
+
+    // Alternate board display.
+        document.body.innerHTML="<textarea rows=45 cols=32></textarea>";
+        this.board=document.getElementsByTagName("textarea")[0];
+        
+    
+    this.countNeighbors=function(x,y,alive)
+    {
+        var numNeighbors=0;
+                
+        var topRow=this.rows[y-1];
+        var middleRow=this.rows[y];
+        var bottomRow=this.rows[y+1];
+        /*----------------------------------------------------------------------
+        If any of the rows or the elements are undefined or if x is beyond 
+        bounds, we don't add! Easy since it's all bitwise and undefined casts to
+        0! Excellent!       
+        ----------------------------------------------------------------------*/
+        
+        // topRow checks
+        if(topRow & (1<<(x-1))) numNeighbors++;
+        if(topRow & (1<<(x))) numNeighbors++;
+        if(topRow & (1<<(x+1))) numNeighbors++;
+        
+        // middleRow checks
+        if(middleRow & (1<<(x-1))) numNeighbors++;
+        if(middleRow & (1<<(x+1))) numNeighbors++;
+
+        // bottomRow checks
+        if(bottomRow & (1<<(x-1))) numNeighbors++;
+        if(bottomRow & (1<<(x))) numNeighbors++;
+        if(bottomRow & (1<<(x+1))) numNeighbors++;
+        
+            if(alive)
+            {
+                // Rule 1, 3 OR 2.
+                return (numNeighbors<2 || numNeighbors>3)? 0:1;
+            }
+            else
+            {
+                // Rule 4.
+                return (numNeighbors==3)? 1:0;
+            }
+    };
+
+    // Update the board display <table>.
+    this.refreshTable=function()
+    {
+        for(var y=0;y<this.height;y++)
+        {
+            var currentRow=this.rows[y];
+            for(var x=0;x<this.width;x++)
+            {
+                this.board.children[y].children[x].className=(currentRow & (1<<x))?"a":"b";
+            }
+        }
+    };
+
+
+    // Update the board display <pre>.
+    this.refresh=function()
+    {
+        var board="";
+        for(var y=0;y<this.height;y++)
+        {
+            var currentRow=this.rows[y];
+            var currentRowString="";
+            for(var x=0;x<this.width;x++)
+            {
+                currentRowString+=(currentRow & (1<<x))?"®":" ";
+            }
+            board+=currentRowString+"\n";
+        }
+        this.board.value=board;
+    };
+    
+    
+    // Run one iteration.
+    this.run=function()
+    {
+        // The copy of rows to replace the current rows[]
+        var newRows=[];
+        
+        for(var y=0;y<this.height;y++)
+        {
+            // Blank. Add values to the currentRow to toggle new row's
+            // cell liveliness status in the new generation.
+            var currentRow=0;
+            
+            for(var x=0;x<this.width;x++)
+            {                
+                // Count the neighbors and set the new value of the cell.
+                currentRow+=this.countNeighbors(x,y, this.rows[y] & (1<<x))<<x;
+            }
+            
+            // Add the new row of the board! 
+            newRows.push(currentRow);
+        }
+        
+        // Replace the board with board from the new generation
+        this.rows=newRows;
+        
+        // Update the display
+        this.refresh();
+    };
+    
+    
+    // Show the board's initial state.
+    this.refresh();
+}
+
+var poo=new Life(30,30);
+
+setInterval("poo.run()",50);
+
+</script></html>

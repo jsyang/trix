@@ -1,0 +1,157 @@
+<html><style>canvas {width:100%; height:100%; position:absolute; left:0; top:0;}</style><body></body><script src=gLayer.js></script><script>
+/*------------------------------------------------------------------------------
+Conway's Game of Life implementation!
+Feb. 19th, 2011
+jsyang.ca@gmail.com
+
+    The rules of the game; from wikipedia:
+        
+        Rule    Condition                       Result
+        1       LIVE CELL WITH 2,3 NEIGHBORS    LIVES
+        2       DEAD CELL WITH 3 NEIGHBORS      LIVES
+        3       OTHERWISE, ANY CELL             DIES
+------------------------------------------------------------------------------*/
+
+
+// Game of Life board.
+function Life(width,height, pattern)
+{
+    // Max height is 30, due to number size restrictions.
+    this.width=width;
+    this.height=height;
+    
+    // Rows has the number which is a bitflag for the cells in that row.
+    // Thus rows[] contains the gameboard for the currrent generation.
+    this.rows=[];
+    
+    var r=Math.random;
+    
+    if(pattern)
+    {
+        switch(pattern)
+        {
+            case "virus":
+                // Fill rows[] with random data for now.
+                for(var i=height;i-->0;)
+                {
+                    var virusRow=[];
+                    for(var j=width;j-->0;)
+                    {
+                        var a=(j%4==1 || j%4==2)? 1:0;
+                        var b=(i%4==1 || i%4==2)? 1:0;
+                        virusRow.push(a&b);
+                    }
+                    this.rows.push(virusRow);
+                }                       
+                break;                
+        }    
+    }
+    else
+    {
+        // Fill rows[] with random data for now.
+        for(var i=height;i-->0;)
+        {
+            var randomRow=[];
+            for(var j=width;j-->0;)
+            {
+                randomRow.push(Math.round(r()));
+            }
+            this.rows.push(randomRow);
+        }
+    }
+
+    // Alternate board display: canvas.        
+        var lifeGLayer=new gLayer([],[width,height]);
+        this.board=lifeGLayer.c;
+        
+    
+    this.countNeighbors=function(x,y)
+    {
+        var numNeighbors=0;
+        var alive=0;
+                        
+        var topRow=this.rows[y-1];
+        var middleRow=this.rows[y];
+        var bottomRow=this.rows[y+1];
+        
+            if(topRow && topRow[x-1]) numNeighbors++;
+            if(topRow && topRow[x]) numNeighbors++;
+            if(topRow && topRow[x+1]) numNeighbors++;
+            if(middleRow && middleRow[x-1]) numNeighbors++;
+            if(middleRow && middleRow[x]) alive=1;
+            if(middleRow && middleRow[x+1]) numNeighbors++;
+            if(bottomRow && bottomRow[x-1]) numNeighbors++;
+            if(bottomRow && bottomRow[x]) numNeighbors++;
+            if(bottomRow && bottomRow[x+1]) numNeighbors++;
+        
+        // Rules of the game.
+        if(alive)   return (numNeighbors==2 || numNeighbors==3)? 1:0;
+                    return (numNeighbors==3)? 1:0;
+    };
+
+    // Update the board display gLayer.
+    this.refresh=function()
+    {
+        var w=this.width;
+        var h=this.height;
+        var newBoard=this.board.createImageData(w,h);
+        for(var y=0;y<h;y++)
+        {
+            for(var x=0;x<w;x++)
+            {
+                var i=(x+y*w)<<2;
+                var cellAlive=this.rows[y][x]? 0:0xff;
+                newBoard.data[i+0]=cellAlive;
+                newBoard.data[i+1]=cellAlive;
+                newBoard.data[i+2]=cellAlive;
+                newBoard.data[i+3]=0xff;
+            }
+        }
+        this.board.putImageData(newBoard,0,0);
+    };
+    
+    
+    // Run one iteration.
+    this.run=function()
+    {
+        // The copy of rows to replace the current rows[]
+        var newRows=[];
+        var w=this.width;
+        var h=this.height;
+        
+        for(var y=0;y<h;y++)
+        {
+            // Blank. Add values to the currentRow to toggle new row's
+            // cell liveliness status in the new generation.
+            var currentRow=[];
+            
+            for(var x=0;x<w;x++)
+            {                
+                // Count the neighbors and set the new value of the cell.
+                currentRow.push(this.countNeighbors(x,y));
+            }
+            
+            // Add the new row of the board! 
+            newRows.push(currentRow);
+        }
+        
+        // Replace the board with board from the new generation
+        this.rows=newRows;
+        
+        // Update the display
+        this.refresh();
+    };
+    
+    
+    // Show the board's initial state.
+    this.refresh();
+}
+
+
+
+var poo=new Life(80,60,"virus");
+setInterval("poo.run()",20);
+setTimeout("poo.rows[7][3]=1;",2000);
+
+
+</script></html>
