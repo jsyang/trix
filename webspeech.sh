@@ -1,4 +1,9 @@
 #!/usr/bin/python
+'''
+Web page to speech.
+jsyang.ca@gmail.com
+Jan. 14, 2012
+'''
 import urllib
 import os
 from HTMLParser import HTMLParser
@@ -30,5 +35,5 @@ page=opener.open(sys.argv[1])
 
 parser = MyHTMLParser()
 parser.feed(page.read())
-print "\n----------------------\n"+textToSpeak
+print "\n"+textToSpeak
 os.system("say \""+textToSpeak.decode("latin-1").encode("utf-8")+"\"")
